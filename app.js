@@ -3488,7 +3488,7 @@ function App() {
             </div>
           </div>
 
-          <div className={`action-group ${isSidebarLayout ? 'sidebar-menu-group compact-account-group' : ''}`}>
+          <div className={`action-group compact-account-group ${isSidebarLayout ? 'sidebar-menu-group' : ''}`}>
             <div className="action-group-title">{isSidebarLayout ? '🔐 Акаунт' : 'Акаунт'}</div>
             <div className="controls-row compact-account-row" style={{display: 'grid', gridTemplateColumns: '1fr', gap: '0.35rem'}}>
               <input type="text" value={authEmail} onChange={(e) => setAuthEmail(e.target.value)} placeholder="Email" className="project-name-input" />
