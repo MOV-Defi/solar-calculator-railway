@@ -2957,7 +2957,11 @@ function App() {
   const getSupabaseClient = () => {
     if (!window.supabase || !window.supabase.createClient) return null;
     const cfg = window.__APP_CONFIG__ || {};
-    const url = String(cfg.SUPABASE_URL || localStorage.getItem('solar_supabase_url_raw') || '').trim();
+    const rawUrl = String(cfg.SUPABASE_URL || localStorage.getItem('solar_supabase_url_raw') || '').trim();
+    const url = rawUrl
+      .replace(/\/+$/, '')
+      .replace(/\/auth\/v1$/i, '')
+      .replace(/\/rest\/v1$/i, '');
     const anon = String(cfg.SUPABASE_ANON_KEY || localStorage.getItem('solar_supabase_anon_raw') || '').trim();
     if (!url || !anon) return null;
     if (!supabaseClientRef.current || supabaseClientRef.current._url !== url || supabaseClientRef.current._anon !== anon) {

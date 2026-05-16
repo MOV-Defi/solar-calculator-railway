@@ -1686,6 +1686,7 @@ input[type="number"]::-webkit-inner-spin-button {
 /* Compact account block */
 .compact-account-group {
   padding: 0.65rem 0.75rem !important;
+  max-width: 760px;
 }
 
 .compact-account-group .action-group-title {
@@ -1694,12 +1695,13 @@ input[type="number"]::-webkit-inner-spin-button {
 
 .compact-account-row {
   gap: 0.3rem !important;
+  align-items: start !important;
 }
 
 .compact-account-row .project-name-input,
 .compact-account-row input[type="text"],
 .compact-account-row input[type="password"] {
-  width: 100% !important;
+  width: min(100%, 420px) !important;
   height: 36px !important;
   min-height: 36px !important;
   padding: 0.45rem 0.7rem !important;
