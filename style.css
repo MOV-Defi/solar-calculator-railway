@@ -1683,6 +1683,38 @@ input[type="number"]::-webkit-inner-spin-button {
   align-items: center;
 }
 
+/* Compact account block */
+.compact-account-group {
+  padding: 0.65rem 0.75rem !important;
+}
+
+.compact-account-group .action-group-title {
+  margin-bottom: 0.32rem !important;
+}
+
+.compact-account-row {
+  gap: 0.3rem !important;
+}
+
+.compact-account-row .project-name-input,
+.compact-account-row input[type="text"],
+.compact-account-row input[type="password"] {
+  width: 100% !important;
+  height: 36px !important;
+  min-height: 36px !important;
+  padding: 0.45rem 0.7rem !important;
+  font-size: 0.94rem !important;
+  border-radius: 8px !important;
+  margin: 0 !important;
+  box-sizing: border-box;
+}
+
+.compact-account-row .menu-action-btn {
+  min-height: 36px !important;
+  padding: 0.4rem 0.7rem !important;
+  border-radius: 8px !important;
+}
+
 .project-name-input {
   width: min(100%, 270px) !important;
 }

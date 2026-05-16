@@ -9,6 +9,7 @@ const DATA_DIR = path.join(ROOT_DIR, 'data');
 const LOCAL_TEMPLATES_FILE = path.join(DATA_DIR, 'templates_catalog.json');
 
 const SUPABASE_URL = process.env.SUPABASE_URL || '';
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || '';
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 const SUPABASE_TEMPLATES_TABLE = process.env.SUPABASE_TEMPLATES_TABLE || 'shared_templates';
 
@@ -127,7 +128,21 @@ app.get('*', (req, res) => {
   if (req.path.startsWith('/api/')) {
     return res.status(404).json({ ok: false, error: 'not_found' });
   }
-  return res.sendFile(path.join(ROOT_DIR, 'index.html'));
+  try {
+    const indexPath = path.join(ROOT_DIR, 'index.html');
+    let html = fs.readFileSync(indexPath, 'utf8');
+    const cfgJson = JSON.stringify({
+      SUPABASE_URL: SUPABASE_URL || '',
+      SUPABASE_ANON_KEY: SUPABASE_ANON_KEY || ''
+    });
+    html = html.replace(
+      /window\.__APP_CONFIG__\s*=\s*window\.__APP_CONFIG__\s*\|\|\s*\{[\s\S]*?\};/,
+      `window.__APP_CONFIG__ = Object.assign({}, window.__APP_CONFIG__ || {}, ${cfgJson});`
+    );
+    return res.type('html').send(html);
+  } catch (error) {
+    return res.status(500).send('index_render_failed');
+  }
 });
 
 app.listen(PORT, () => {
