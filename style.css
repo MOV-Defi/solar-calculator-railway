@@ -1717,6 +1717,23 @@ input[type="number"]::-webkit-inner-spin-button {
   border-radius: 8px !important;
 }
 
+.account-templates-row {
+  display: grid;
+  grid-template-columns: minmax(320px, 760px) minmax(420px, 1fr);
+  gap: 0.8rem;
+  align-items: start;
+}
+
+.compact-templates-group {
+  min-height: 100%;
+}
+
+@media (max-width: 1200px) {
+  .account-templates-row {
+    grid-template-columns: 1fr;
+  }
+}
+
 .project-name-input {
   width: min(100%, 270px) !important;
 }

@@ -3492,45 +3492,47 @@ function App() {
             </div>
           </div>
 
-          <div className={`action-group compact-account-group ${isSidebarLayout ? 'sidebar-menu-group' : ''}`}>
-            <div className="action-group-title">{isSidebarLayout ? '🔐 Акаунт' : 'Акаунт'}</div>
-            <div className="controls-row compact-account-row" style={{display: 'grid', gridTemplateColumns: '1fr', gap: '0.35rem'}}>
-              <input type="text" value={authEmail} onChange={(e) => setAuthEmail(e.target.value)} placeholder="Email" className="project-name-input" />
-              <input type="password" value={authPassword} onChange={(e) => setAuthPassword(e.target.value)} placeholder="Password" className="project-name-input" />
-              <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.4rem'}}>
-                <button type="button" className="secondary menu-action-btn" style={{background: '#0f766e'}} onClick={authRegister}>Реєстрація</button>
-                <button type="button" className="secondary menu-action-btn" style={{background: '#1d4ed8'}} onClick={authLogin}>Увійти</button>
-              </div>
-              <button type="button" className="danger menu-action-btn" onClick={authLogout}>Вийти</button>
-              <div style={{fontSize: '0.8rem', color: '#93c5fd', padding: '0.2rem 0.2rem', lineHeight: 1.35}}>
-                {authUserEmail ? `Увійшов: ${authUserEmail}` : 'Не авторизований'}
-              </div>
-              <div style={{fontSize: '0.75rem', color: '#94a3b8', minHeight: '1rem'}}>
-                {authStatus || ''}
+          <div className="account-templates-row">
+            <div className={`action-group compact-account-group ${isSidebarLayout ? 'sidebar-menu-group' : ''}`}>
+              <div className="action-group-title">{isSidebarLayout ? '🔐 Акаунт' : 'Акаунт'}</div>
+              <div className="controls-row compact-account-row" style={{display: 'grid', gridTemplateColumns: '1fr', gap: '0.35rem'}}>
+                <input type="text" value={authEmail} onChange={(e) => setAuthEmail(e.target.value)} placeholder="Email" className="project-name-input" />
+                <input type="password" value={authPassword} onChange={(e) => setAuthPassword(e.target.value)} placeholder="Password" className="project-name-input" />
+                <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.4rem'}}>
+                  <button type="button" className="secondary menu-action-btn" style={{background: '#0f766e'}} onClick={authRegister}>Реєстрація</button>
+                  <button type="button" className="secondary menu-action-btn" style={{background: '#1d4ed8'}} onClick={authLogin}>Увійти</button>
+                </div>
+                <button type="button" className="danger menu-action-btn" onClick={authLogout}>Вийти</button>
+                <div style={{fontSize: '0.8rem', color: '#93c5fd', padding: '0.2rem 0.2rem', lineHeight: 1.35}}>
+                  {authUserEmail ? `Увійшов: ${authUserEmail}` : 'Не авторизований'}
+                </div>
+                <div style={{fontSize: '0.75rem', color: '#94a3b8', minHeight: '1rem'}}>
+                  {authStatus || ''}
+                </div>
               </div>
             </div>
-          </div>
 
-          <div className={`action-group ${isSidebarLayout ? 'sidebar-menu-group' : ''}`}>
-            <div className="action-group-title">{isSidebarLayout ? '🧩 Шаблони' : 'Шаблони'}</div>
-            <div className="controls-row">
-              <input type="text" value={templateName} onChange={(e) => setTemplateName(e.target.value)} placeholder="Назва шаблону..." className="project-name-input" />
-              <select className="secondary template-select" value={templateVisibility} onChange={(e) => setTemplateVisibility(e.target.value)}>
-                <option value="private">Приватний</option>
-                <option value="shared">Загальний</option>
-              </select>
-              <button type="button" className="secondary menu-action-btn" data-cat="template" style={{background: '#4b5563'}} onClick={saveTemplate} data-title="Зберегти шаблон"><MenuBtnLabel icon="💾" label="Зберегти шаблон" /></button>
-              <button type="button" className="secondary menu-action-btn" data-cat="template" style={{background: '#2563eb'}} onClick={saveTemplateAsNew} data-title="Зберегти як новий"><MenuBtnLabel icon="🆕" label="Зберегти як" /></button>
-              <select className="secondary template-select" value={templateFilter} onChange={(e) => setTemplateFilter(e.target.value)}>
-                <option value="all">Всі шаблони</option>
-                <option value="private">Приватні</option>
-                <option value="shared">Загальні</option>
-              </select>
-              <select className="secondary template-select" onChange={(e) => loadTemplate(e.target.value)} value={selectedTemplateId}>
-                <option value="" disabled>Завантажити шаблон...</option>
-                {filteredTemplates.map(t => <option key={t.id} value={t.id}>{`${t.name} [${t.visibility === 'private' ? 'private' : 'shared'}]`}</option>)}
-              </select>
-              <button type="button" className="danger menu-action-btn" data-cat="danger" disabled={!selectedTemplateId} onClick={() => deleteTemplate(selectedTemplateId)} data-title="Видалити шаблон"><MenuBtnLabel icon="🗑️" label="Видалити шаблон" /></button>
+            <div className={`action-group compact-templates-group ${isSidebarLayout ? 'sidebar-menu-group' : ''}`}>
+              <div className="action-group-title">{isSidebarLayout ? '🧩 Шаблони' : 'Шаблони'}</div>
+              <div className="controls-row">
+                <input type="text" value={templateName} onChange={(e) => setTemplateName(e.target.value)} placeholder="Назва шаблону..." className="project-name-input" />
+                <select className="secondary template-select" value={templateVisibility} onChange={(e) => setTemplateVisibility(e.target.value)}>
+                  <option value="private">Приватний</option>
+                  <option value="shared">Загальний</option>
+                </select>
+                <button type="button" className="secondary menu-action-btn" data-cat="template" style={{background: '#4b5563'}} onClick={saveTemplate} data-title="Зберегти шаблон"><MenuBtnLabel icon="💾" label="Зберегти шаблон" /></button>
+                <button type="button" className="secondary menu-action-btn" data-cat="template" style={{background: '#2563eb'}} onClick={saveTemplateAsNew} data-title="Зберегти як новий"><MenuBtnLabel icon="🆕" label="Зберегти як" /></button>
+                <select className="secondary template-select" value={templateFilter} onChange={(e) => setTemplateFilter(e.target.value)}>
+                  <option value="all">Всі шаблони</option>
+                  <option value="private">Приватні</option>
+                  <option value="shared">Загальні</option>
+                </select>
+                <select className="secondary template-select" onChange={(e) => loadTemplate(e.target.value)} value={selectedTemplateId}>
+                  <option value="" disabled>Завантажити шаблон...</option>
+                  {filteredTemplates.map(t => <option key={t.id} value={t.id}>{`${t.name} [${t.visibility === 'private' ? 'private' : 'shared'}]`}</option>)}
+                </select>
+                <button type="button" className="danger menu-action-btn" data-cat="danger" disabled={!selectedTemplateId} onClick={() => deleteTemplate(selectedTemplateId)} data-title="Видалити шаблон"><MenuBtnLabel icon="🗑️" label="Видалити шаблон" /></button>
+              </div>
             </div>
           </div>
         </div>
