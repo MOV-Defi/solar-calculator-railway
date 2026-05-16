@@ -3494,15 +3494,20 @@ function App() {
 
           <div className="account-templates-row">
             <div className={`action-group compact-account-group ${isSidebarLayout ? 'sidebar-menu-group' : ''}`}>
-              <div className="action-group-title">{isSidebarLayout ? '🔐 Акаунт' : 'Акаунт'}</div>
+            <div className="action-group-title">{isSidebarLayout ? '🔐 Акаунт' : 'Акаунт'}</div>
               <div className="controls-row compact-account-row" style={{display: 'grid', gridTemplateColumns: '1fr', gap: '0.35rem'}}>
-                <input type="text" value={authEmail} onChange={(e) => setAuthEmail(e.target.value)} placeholder="Email" className="project-name-input" />
-                <input type="password" value={authPassword} onChange={(e) => setAuthPassword(e.target.value)} placeholder="Password" className="project-name-input" />
-                <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.4rem'}}>
-                  <button type="button" className="secondary menu-action-btn" style={{background: '#0f766e'}} onClick={authRegister}>Реєстрація</button>
-                  <button type="button" className="secondary menu-action-btn" style={{background: '#1d4ed8'}} onClick={authLogin}>Увійти</button>
-                </div>
-                <button type="button" className="danger menu-action-btn" onClick={authLogout}>Вийти</button>
+                {!authUserEmail ? (
+                  <>
+                    <input type="text" value={authEmail} onChange={(e) => setAuthEmail(e.target.value)} placeholder="Email" className="project-name-input" />
+                    <input type="password" value={authPassword} onChange={(e) => setAuthPassword(e.target.value)} placeholder="Password" className="project-name-input" />
+                    <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.4rem'}}>
+                      <button type="button" className="secondary menu-action-btn" style={{background: '#0f766e'}} onClick={authRegister}>Реєстрація</button>
+                      <button type="button" className="secondary menu-action-btn" style={{background: '#1d4ed8'}} onClick={authLogin}>Увійти</button>
+                    </div>
+                  </>
+                ) : (
+                  <button type="button" className="danger menu-action-btn" onClick={authLogout}>Вийти</button>
+                )}
                 <div style={{fontSize: '0.8rem', color: '#93c5fd', padding: '0.2rem 0.2rem', lineHeight: 1.35}}>
                   {authUserEmail ? `Увійшов: ${authUserEmail}` : 'Не авторизований'}
                 </div>
