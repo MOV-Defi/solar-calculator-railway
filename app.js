@@ -3,6 +3,11 @@
 const { useState, useMemo, useEffect, useRef } = React;
 
 const expandableGroups = ["Захист PV", "Захист AC", "Захист DC"];
+const PROTECTION_DISPLAY_NAMES = {
+  "Захист PV": "Щит захисту PV",
+  "Захист AC": "Щит захисту AC",
+  "Захист DC": "Щит захисту DC"
+};
 const MAIN_TYPES = ["Інвертор", "ФЕП", "АКБ", "BMS", "MPPT контролер", "Cerbo", "Кліматична шафа", "Стійка", "Інше"];
 const PROTECTION_TYPES = ["Захист PV", "Захист AC", "Захист DC", "Інше"];
 const PROTECTION_GROUP_CHOICES = ["Захист PV", "Захист AC", "Захист DC", "Інше"];
@@ -182,9 +187,9 @@ const createCommercialWorkItems = () => DEFAULT_COMMERCIAL_WORK_ITEMS.map((name,
   markupPercent: 0
 }));
 const createDefaultGroupSettings = () => ({
-  "Захист PV": { mode: 'fixed', name: 'Захист PV', price: 0, incomingPrice: 0, currency: 'USD', unit: 'компл', quantity: 1, markupPercent: 0, pvTemplateStrings: 1, pvTemplateType: 'Стандарт', pvCableMetersPerString: 150, pvAutoCableQuantity: true },
-  "Захист AC": { mode: 'fixed', name: 'Захист AC', price: 0, incomingPrice: 0, currency: 'USD', unit: 'компл', quantity: 1, markupPercent: 0 },
-  "Захист DC": { mode: 'fixed', name: 'Захист DC', price: 0, incomingPrice: 0, currency: 'USD', unit: 'компл', quantity: 1, markupPercent: 0 },
+  "Захист PV": { mode: 'fixed', name: 'Щит захисту PV', price: 0, incomingPrice: 0, currency: 'USD', unit: 'компл', quantity: 1, markupPercent: 0, pvTemplateStrings: 1, pvTemplateType: 'Стандарт', pvCableMetersPerString: 150, pvAutoCableQuantity: true },
+  "Захист AC": { mode: 'fixed', name: 'Щит захисту AC', price: 0, incomingPrice: 0, currency: 'USD', unit: 'компл', quantity: 1, markupPercent: 0 },
+  "Захист DC": { mode: 'fixed', name: 'Щит захисту DC', price: 0, incomingPrice: 0, currency: 'USD', unit: 'компл', quantity: 1, markupPercent: 0 },
   "Кріплення": { mode: 'detailed', name: 'Кріплення (металочерепиця/профнастил)', price: 0, incomingPrice: 0, currency: 'USD', unit: 'компл', quantity: 1, markupPercent: 0 }
 });
 const toNumber = (value, fallback = 0) => {
@@ -234,8 +239,22 @@ const normalizeImportedTemplates = (parsed) => {
     .map((t, idx) => ({
       id: String(t.id || `template_${idx + 1}`),
       name: String(t.name || `Шаблон ${idx + 1}`),
-      data: (t.data && typeof t.data === 'object') ? t.data : {}
+      data: (t.data && typeof t.data === 'object') ? t.data : {},
+      visibility: t.visibility === 'private' ? 'private' : 'shared'
     }));
+};
+const migrateProtectionDisplayNames = (settings = {}) => {
+  if (!settings || typeof settings !== 'object') return settings;
+  const next = { ...settings };
+  ["Захист PV", "Захист AC", "Захист DC"].forEach((key) => {
+    if (!next[key] || typeof next[key] !== 'object') return;
+    const legacyName = String(next[key].name || '').trim();
+    const targetName = PROTECTION_DISPLAY_NAMES[key] || key;
+    if (!legacyName || legacyName === key || legacyName.startsWith('Захист ')) {
+      next[key] = { ...next[key], name: targetName };
+    }
+  });
+  return next;
 };
 const buildTemplatesCatalogPayload = (templatesList = []) => ({
   schemaVersion: 1,
@@ -246,13 +265,16 @@ const getTemplatesCatalogSignature = (templatesList = []) => JSON.stringify(
   (normalizeImportedTemplates({ templates: templatesList }) || []).map((template) => ({
     id: template.id,
     name: template.name,
-    data: template.data
+    data: template.data,
+    visibility: template.visibility === 'private' ? 'private' : 'shared'
   }))
 );
 
 const fetchServerTemplatesCatalog = async () => {
   try {
-    const response = await fetch('/api/templates', { method: 'GET' });
+    const token = localStorage.getItem('solar_supabase_access_token') || '';
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+    const response = await fetch('/api/templates', { method: 'GET', headers });
     if (!response.ok) return null;
     const payload = await response.json().catch(() => null);
     const normalized = normalizeImportedTemplates(payload?.data);
@@ -264,9 +286,13 @@ const fetchServerTemplatesCatalog = async () => {
 
 const saveServerTemplatesCatalog = async (templatesList = []) => {
   try {
+    const token = localStorage.getItem('solar_supabase_access_token') || '';
     const response = await fetch('/api/templates', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
+      },
       body: JSON.stringify(buildTemplatesCatalogPayload(templatesList))
     });
     if (!response.ok) return false;
@@ -459,7 +485,7 @@ function App() {
   const [taxDistributionScope, setTaxDistributionScope] = useState(() => getSaved('solar_taxDistributionScope', 'nonMainGoods'));
   const [installPercentTaxUsd, setInstallPercentTaxUsd] = useState(() => getSaved('solar_installPercentTaxUsd', 0));
   const [autoInstallPercentEnabled, setAutoInstallPercentEnabled] = useState(() => getSaved('solar_autoInstallPercentEnabled', true));
-  const [groupSettings, setGroupSettings] = useState(() => getSaved('solar_groupSettings', createDefaultGroupSettings()));
+  const [groupSettings, setGroupSettings] = useState(() => migrateProtectionDisplayNames(getSaved('solar_groupSettings', createDefaultGroupSettings())));
 
   const [projectName, setProjectName] = useState("");
   const [projectType, setProjectType] = useState(() => getSaved('solar_projectType', 'commercial'));
@@ -479,6 +505,8 @@ function App() {
   });
   const [templateName, setTemplateName] = useState("");
   const [selectedTemplateId, setSelectedTemplateId] = useState("");
+  const [templateVisibility, setTemplateVisibility] = useState(() => getSaved('solar_templateVisibility', 'private'));
+  const [templateFilter, setTemplateFilter] = useState(() => getSaved('solar_templateFilter', 'all'));
   const [newProtectionType, setNewProtectionType] = useState("Захист PV");
   const [newProtectionCustomName, setNewProtectionCustomName] = useState("");
   const [mountingTemplateSelection, setMountingTemplateSelection] = useState(() => getSaved('solar_mountingTemplateSelection', {}));
@@ -490,6 +518,7 @@ function App() {
   const [showOfferComparisonSheet, setShowOfferComparisonSheet] = useState(false);
   const [editingOfferSheetId, setEditingOfferSheetId] = useState('');
   const isApplyingOfferSheetRef = useRef(false);
+  const isApplyingSnapshotRef = useRef(false);
 
   // Reverse migration to fix the issue where all protection items were merged into one group
   // Aggressive repair logic removed to prevent data loss.
@@ -616,6 +645,11 @@ function App() {
   }, [productDatabase]);
 
   const [printMode, setPrintMode] = useState(null); // null, 'offer', 'invoice'
+  const [includeManagerInOffer, setIncludeManagerInOffer] = useState(() => getSaved('solar_includeManagerInOffer', true));
+  const [includeClientInOffer, setIncludeClientInOffer] = useState(() => getSaved('solar_includeClientInOffer', true));
+  const [includeAddressInOffer, setIncludeAddressInOffer] = useState(() => getSaved('solar_includeAddressInOffer', true));
+  const [showObjectTypeOnCover, setShowObjectTypeOnCover] = useState(() => getSaved('solar_showObjectTypeOnCover', false));
+  const [printCurrencyMode, setPrintCurrencyMode] = useState(() => getSaved('solar_printCurrencyMode', 'both')); // both | usd | uah
   const [offerAppendPdfFiles, setOfferAppendPdfFiles] = useState([]);
   const offerAppendPdfInputRef = useRef(null);
   const [activeDropdown, setActiveDropdown] = useState(null);
@@ -627,6 +661,11 @@ function App() {
   const [menuCollapsed, setMenuCollapsed] = useState(() => getSaved('solar_menuCollapsed', false));
   const [autoMountingQuantity, setAutoMountingQuantity] = useState(() => getSaved('solar_autoMountingQuantity', true));
   const [newCategoryName, setNewCategoryName] = useState("");
+  const [authEmail, setAuthEmail] = useState(() => getSaved('solar_auth_email', ''));
+  const [authPassword, setAuthPassword] = useState('');
+  const [authUserEmail, setAuthUserEmail] = useState(() => getSaved('solar_auth_user_email', ''));
+  const [authStatus, setAuthStatus] = useState('');
+  const supabaseClientRef = useRef(null);
   const catalogLoadedRef = useRef(false);
   const catalogWriteTimerRef = useRef(null);
   const lastCatalogSignatureRef = useRef('');
@@ -639,6 +678,10 @@ function App() {
   useEffect(() => { localStorage.setItem('solar_projectFolderName', JSON.stringify(projectFolderName)); }, [projectFolderName]);
   useEffect(() => { localStorage.setItem('solar_clientMode', JSON.stringify(clientMode)); }, [clientMode]);
   useEffect(() => { localStorage.setItem('solar_templates', JSON.stringify(templates)); }, [templates]);
+  useEffect(() => { localStorage.setItem('solar_templateVisibility', JSON.stringify(templateVisibility)); }, [templateVisibility]);
+  useEffect(() => { localStorage.setItem('solar_templateFilter', JSON.stringify(templateFilter)); }, [templateFilter]);
+  useEffect(() => { localStorage.setItem('solar_auth_email', JSON.stringify(authEmail)); }, [authEmail]);
+  useEffect(() => { localStorage.setItem('solar_auth_user_email', JSON.stringify(authUserEmail)); }, [authUserEmail]);
   useEffect(() => {
     localStorage.setItem('solar_uiTheme', JSON.stringify(uiTheme));
     const normalizedTheme = uiTheme === 'light' || uiTheme === 'gray' ? uiTheme : 'dark';
@@ -658,6 +701,7 @@ function App() {
   }, [equipmentGroups]);
 
   useEffect(() => {
+    if (isApplyingSnapshotRef.current) return;
     if (!autoMountingQuantity) return;
     const normalizedQty = Math.max(0, Math.round(toNumber(totalPanelQuantity, 0)));
     setGroupSettings(prev => {
@@ -694,6 +738,7 @@ function App() {
   }, [autoMountingQuantity, totalPanelQuantity]);
 
   useEffect(() => {
+    if (isApplyingSnapshotRef.current) return;
     const settings = groupSettings["Захист PV"] || {};
     if (!settings.pvAutoCableQuantity) return;
 
@@ -760,6 +805,7 @@ function App() {
   }, [groupSettings]);
 
   useEffect(() => {
+    if (isApplyingSnapshotRef.current) return;
     setEquipmentGroups(prev => {
       const rows = Array.isArray(prev["Захист PV"]) ? prev["Захист PV"] : [];
       const nextRows = rows.filter(item => !isPvCableProductRow(item));
@@ -777,6 +823,7 @@ function App() {
   }, [equipmentGroups["Основне обладнання"]]);
 
   useEffect(() => {
+    if (isApplyingSnapshotRef.current) return;
     setEquipmentGroups(prev => {
       const rows = Array.isArray(prev["Основне обладнання"]) ? prev["Основне обладнання"] : [];
       const required = {};
@@ -877,6 +924,7 @@ function App() {
   }, [equipmentGroups["Основне обладнання"]]);
 
   useEffect(() => {
+    if (isApplyingSnapshotRef.current) return;
     setEquipmentGroups(prev => {
       const rows = Array.isArray(prev["Основне обладнання"]) ? prev["Основне обладнання"] : [];
       const victronTotalQty = rows.reduce((acc, row) => {
@@ -1207,6 +1255,7 @@ function App() {
 
   const applyOfferSheetSnapshot = (data) => {
     if (!data || typeof data !== 'object') return;
+    isApplyingSnapshotRef.current = true;
     const loadedManagers = Array.isArray(data.managerContacts) && data.managerContacts.length > 0
       ? data.managerContacts
       : DEFAULT_MANAGER_CONTACTS;
@@ -1247,13 +1296,15 @@ function App() {
     setTaxDistributionScope(data.taxDistributionScope || 'nonMainGoods');
     setInstallPercentTaxUsd(data.installPercentTaxUsd ?? 0);
     setAutoInstallPercentEnabled(typeof data.autoInstallPercentEnabled === 'boolean' ? data.autoInstallPercentEnabled : true);
-    setGroupSettings(data.groupSettings && typeof data.groupSettings === 'object' ? data.groupSettings : createDefaultGroupSettings());
+    setGroupSettings(data.groupSettings && typeof data.groupSettings === 'object' ? migrateProtectionDisplayNames(data.groupSettings) : createDefaultGroupSettings());
     setAutoMountingQuantity(typeof data.autoMountingQuantity === 'boolean' ? data.autoMountingQuantity : true);
     setProjectType(data.projectType || 'commercial');
+    setTimeout(() => { isApplyingSnapshotRef.current = false; }, 0);
   };
 
   const applyProjectData = (project) => {
     const data = project?.data || {};
+    isApplyingSnapshotRef.current = true;
     const loadedManagers = Array.isArray(data.managerContacts) && data.managerContacts.length > 0
       ? data.managerContacts
       : DEFAULT_MANAGER_CONTACTS;
@@ -1282,7 +1333,7 @@ function App() {
     setClientDiscountPercent(data.clientDiscountPercent ?? 0);
     setTaxMode(data.taxMode || 'none');
     setModulePower(data.modulePower ?? 550);
-    setGroupSettings(data.groupSettings && typeof data.groupSettings === 'object' ? data.groupSettings : createDefaultGroupSettings());
+    setGroupSettings(data.groupSettings && typeof data.groupSettings === 'object' ? migrateProtectionDisplayNames(data.groupSettings) : createDefaultGroupSettings());
     setProjectType(project.type || 'commercial');
     setProjectName(project.name || "");
     setProjectFolderName(project.projectFolderName || data.projectFolderName || "");
@@ -1302,10 +1353,12 @@ function App() {
       : loadedSheets[0].id;
     setOfferSheets(loadedSheets);
     setActiveOfferSheetId(loadedActiveSheetId);
+    setTimeout(() => { isApplyingSnapshotRef.current = false; }, 0);
   };
 
   const applyTemplateData = (template) => {
     const data = template?.data || {};
+    isApplyingSnapshotRef.current = true;
     const loadedManagers = Array.isArray(data.managerContacts) && data.managerContacts.length > 0
       ? data.managerContacts
       : DEFAULT_MANAGER_CONTACTS;
@@ -1330,17 +1383,19 @@ function App() {
     setInstallPercent(data.installPercent ?? 15);
     setClientDiscountPercent(data.clientDiscountPercent ?? 0);
     setTaxMode(data.taxMode || 'none');
-    setGroupSettings(data.groupSettings && typeof data.groupSettings === 'object' ? data.groupSettings : createDefaultGroupSettings());
+    setGroupSettings(data.groupSettings && typeof data.groupSettings === 'object' ? migrateProtectionDisplayNames(data.groupSettings) : createDefaultGroupSettings());
     if (typeof data.autoMountingQuantity === 'boolean') {
       setAutoMountingQuantity(data.autoMountingQuantity);
     } else {
       setAutoMountingQuantity(true);
     }
     setSelectedTemplateId(String(template?.id || ""));
+    setTimeout(() => { isApplyingSnapshotRef.current = false; }, 0);
   };
 
   const saveProject = async (e) => {
     if (e?.preventDefault) e.preventDefault();
+    persistCurrentSheetState();
     const baseDocName = buildDocumentBaseName(clientInfo, calculations.stationPowerW);
     const safeName = projectName.trim() || baseDocName;
     const generatedFolder = toSafeFilePart(baseDocName).replace(/\s+/g, '_') || (`Project_` + Date.now());
@@ -1349,6 +1404,21 @@ function App() {
     const computedFolder = (!normalizedFolder || isLegacyFolderName) ? generatedFolder : normalizedFolder;
     rememberProjectCatalog(equipmentGroups);
     await persistProductsCatalog(productLastValues);
+
+    const activeSheetIdForSave = String(activeOfferSheetId || '');
+    const activeSnapshotForSave = buildOfferSheetSnapshot();
+    const activeSummaryForSave = buildOfferSheetSummary();
+    const offerSheetsForSave = (() => {
+      const list = Array.isArray(offerSheets) && offerSheets.length > 0
+        ? offerSheets
+        : DEFAULT_OFFER_SHEETS;
+      if (!activeSheetIdForSave) return list;
+      return list.map((sheet) => (
+        String(sheet.id) === activeSheetIdForSave
+          ? { ...sheet, data: activeSnapshotForSave, summary: activeSummaryForSave, updatedAt: new Date().toISOString() }
+          : sheet
+      ));
+    })();
 
     const payload = {
       schemaVersion: 1,
@@ -1381,8 +1451,8 @@ function App() {
         groupSettings,
         autoMountingQuantity,
         projectFolderName: computedFolder,
-        offerSheets,
-        activeOfferSheetId
+        offerSheets: offerSheetsForSave,
+        activeOfferSheetId: activeSheetIdForSave || (offerSheetsForSave[0]?.id || '')
       }
     };
 
@@ -1441,6 +1511,7 @@ function App() {
     const payload = {
       id,
       name: safeName,
+      visibility: templateVisibility === 'shared' ? 'shared' : 'private',
       data: {
         equipmentGroups,
         offerPurpose,
@@ -1486,6 +1557,7 @@ function App() {
     const payload = {
       id,
       name: safeName,
+      visibility: templateVisibility === 'shared' ? 'shared' : 'private',
       data: {
         equipmentGroups,
         offerPurpose,
@@ -1519,6 +1591,7 @@ function App() {
     if (!selected) return;
     applyTemplateData(selected);
     setTemplateName(selected.name || "");
+    setTemplateVisibility(selected.visibility === 'shared' ? 'shared' : 'private');
   };
 
   const deleteTemplate = (id) => {
@@ -1663,6 +1736,69 @@ function App() {
 
   const exportToExcel = async (mode = 'offer', detailLevel = 'summary') => {
     try {
+      const activeSheetIdForExport = String(activeOfferSheetId || '');
+      const buildSheetsForExport = () => {
+        const list = (Array.isArray(offerSheets) && offerSheets.length > 0) ? offerSheets : DEFAULT_OFFER_SHEETS;
+        if (!activeSheetIdForExport) return list;
+        const snapshot = buildOfferSheetSnapshot();
+        const summary = buildOfferSheetSummary();
+        const stamp = new Date().toISOString();
+        return list.map((sheet) => (
+          String(sheet.id) === activeSheetIdForExport
+            ? { ...sheet, data: snapshot, summary, updatedAt: stamp }
+            : sheet
+        ));
+      };
+
+      if (mode === 'offer_bank') {
+        persistCurrentSheetState();
+        const rawPercent = window.prompt('Вкажіть націнку на основне обладнання для "Excel ФОП без робіт", %', '10');
+        if (rawPercent === null) return;
+        const extraPercent = Math.max(0, toNumber(rawPercent, 10));
+        await exportBankOfferExcelFile({
+          clientInfo,
+          calculations,
+          rates: {
+            eur: toNumber(rates.eur, 0),
+            usd: toNumber(rates.usd, 0)
+          },
+          workspaceHandle,
+          projectFolderName,
+          extraPercent
+        });
+        return;
+      }
+      if (mode === 'offer_tax_full') {
+        persistCurrentSheetState();
+        const sheetsForExport = buildSheetsForExport();
+        await exportAllOffersToExcelFile({
+          offerSheets: sheetsForExport,
+          activeOfferSheetId: activeSheetIdForExport,
+          clientInfo,
+          calculations,
+          workspaceHandle,
+          projectFolderName,
+          detailLevel: 'full',
+          includeTaxBreakdown: false,
+          separateTaxSheet: true
+        });
+        return;
+      }
+      if (mode === 'offer') {
+        persistCurrentSheetState();
+        const sheetsForExport = buildSheetsForExport();
+        await exportAllOffersToExcelFile({
+          offerSheets: sheetsForExport,
+          activeOfferSheetId: activeSheetIdForExport,
+          clientInfo,
+          calculations,
+          workspaceHandle,
+          projectFolderName,
+          detailLevel
+        });
+        return;
+      }
+
       await exportToExcelFile({
         mode,
         projectType,
@@ -2319,6 +2455,11 @@ function App() {
   useEffect(() => { localStorage.setItem('solar_coverQrUrl', JSON.stringify(coverQrUrl)); }, [coverQrUrl]);
   useEffect(() => { localStorage.setItem('solar_offerSettingsCollapsed', JSON.stringify(offerSettingsCollapsed)); }, [offerSettingsCollapsed]);
   useEffect(() => { localStorage.setItem('solar_managerContacts', JSON.stringify(managerContacts)); }, [managerContacts]);
+  useEffect(() => { localStorage.setItem('solar_includeManagerInOffer', JSON.stringify(includeManagerInOffer)); }, [includeManagerInOffer]);
+  useEffect(() => { localStorage.setItem('solar_includeClientInOffer', JSON.stringify(includeClientInOffer)); }, [includeClientInOffer]);
+  useEffect(() => { localStorage.setItem('solar_includeAddressInOffer', JSON.stringify(includeAddressInOffer)); }, [includeAddressInOffer]);
+  useEffect(() => { localStorage.setItem('solar_showObjectTypeOnCover', JSON.stringify(showObjectTypeOnCover)); }, [showObjectTypeOnCover]);
+  useEffect(() => { localStorage.setItem('solar_printCurrencyMode', JSON.stringify(printCurrencyMode)); }, [printCurrencyMode]);
   useEffect(() => { localStorage.setItem('solar_selectedManagerId', JSON.stringify(selectedManagerId)); }, [selectedManagerId]);
   useEffect(() => { localStorage.setItem('solar_equipmentGroups', JSON.stringify(equipmentGroups)); }, [equipmentGroups]);
   useEffect(() => { localStorage.setItem('solar_otherExpenses', JSON.stringify(otherExpenses)); }, [otherExpenses]);
@@ -2590,7 +2731,7 @@ function App() {
       return acc + Math.max(0, toNumber(settings?.taxDistributedUsd, 0));
     }, 0);
     const distributedTaxUsdTotal = distributedTaxUsdFromRows + distributedTaxUsdFromFixedGroups;
-    if (taxMode !== 'vat' && taxDistributionApplied && lockedDistributedTaxUsd !== null && lockedDistributedTaxUsd !== undefined && toNumber(lockedDistributedTaxUsd, 0) > 0) {
+    if (taxDistributionApplied && lockedDistributedTaxUsd !== null && lockedDistributedTaxUsd !== undefined && toNumber(lockedDistributedTaxUsd, 0) > 0) {
       taxesUsd = toNumber(lockedDistributedTaxUsd, 0);
     }
     const marginAfterTaxesUsd = grossMarginBeforeTaxesUsd - taxesUsd;
@@ -2768,6 +2909,12 @@ function App() {
     projectType === 'commercial' ? 'Монтаж, запуск та супровід:' : 'Монтажні та пусконалагоджувальні роботи:'
   );
   const offerSheetsForUi = (Array.isArray(offerSheets) && offerSheets.length > 0) ? offerSheets : DEFAULT_OFFER_SHEETS;
+  const filteredTemplates = (templates || []).filter((t) => {
+    const v = t?.visibility === 'private' ? 'private' : 'shared';
+    if (templateFilter === 'private') return v === 'private';
+    if (templateFilter === 'shared') return v === 'shared';
+    return true;
+  });
   const offerComparisonRows = offerSheetsForUi.map((sheet) => {
     const isActive = String(sheet.id) === String(activeOfferSheetId);
     const summary = isActive
@@ -2790,6 +2937,63 @@ function App() {
     };
   });
 
+  const getSupabaseClient = () => {
+    if (!window.supabase || !window.supabase.createClient) return null;
+    const cfg = window.__APP_CONFIG__ || {};
+    const url = String(cfg.SUPABASE_URL || localStorage.getItem('solar_supabase_url_raw') || '').trim();
+    const anon = String(cfg.SUPABASE_ANON_KEY || localStorage.getItem('solar_supabase_anon_raw') || '').trim();
+    if (!url || !anon) return null;
+    if (!supabaseClientRef.current || supabaseClientRef.current._url !== url || supabaseClientRef.current._anon !== anon) {
+      const client = window.supabase.createClient(url, anon);
+      client._url = url;
+      client._anon = anon;
+      supabaseClientRef.current = client;
+    }
+    return supabaseClientRef.current;
+  };
+
+  const authLogin = async () => {
+    try {
+      const client = getSupabaseClient();
+      if (!client) { setAuthStatus('Auth не налаштований (немає Supabase config)'); return; }
+      const { data, error } = await client.auth.signInWithPassword({ email: String(authEmail || '').trim(), password: String(authPassword || '') });
+      if (error) { setAuthStatus(`Login error: ${error.message}`); return; }
+      const token = data?.session?.access_token || '';
+      localStorage.setItem('solar_supabase_access_token', token);
+      setAuthUserEmail(data?.user?.email || authEmail);
+      setAuthStatus('Успішний вхід');
+      const serverTemplates = await fetchServerTemplatesCatalog();
+      if (serverTemplates) setTemplates(serverTemplates);
+    } catch (e) {
+      setAuthStatus(`Login error: ${e.message || 'unknown'}`);
+    }
+  };
+
+  const authRegister = async () => {
+    try {
+      const client = getSupabaseClient();
+      if (!client) { setAuthStatus('Auth не налаштований (немає Supabase config)'); return; }
+      const { data, error } = await client.auth.signUp({ email: String(authEmail || '').trim(), password: String(authPassword || '') });
+      if (error) { setAuthStatus(`Register error: ${error.message}`); return; }
+      const token = data?.session?.access_token || '';
+      if (token) localStorage.setItem('solar_supabase_access_token', token);
+      setAuthUserEmail(data?.user?.email || authEmail);
+      setAuthStatus(token ? 'Реєстрація + вхід успішні' : 'Реєстрація успішна');
+    } catch (e) {
+      setAuthStatus(`Register error: ${e.message || 'unknown'}`);
+    }
+  };
+
+  const authLogout = async () => {
+    try {
+      const client = getSupabaseClient();
+      if (client) await client.auth.signOut();
+    } catch (_) {}
+    localStorage.removeItem('solar_supabase_access_token');
+    setAuthUserEmail('');
+    setAuthStatus('Вийшов');
+  };
+
   const currentYear = new Date().getFullYear();
   const splitMoneyParts = (value) => {
     const formatted = formatMoney(value);
@@ -2806,6 +3010,8 @@ function App() {
   const discountUsdParts = splitMoneyParts(calculations.sums.discountUsd || 0);
   const discountUahParts = splitMoneyParts((calculations.sums.discountUsd || 0) * toNumber(rates.usd, 0));
   const hasOfferDiscount = toNumber(calculations.sums.discountPercent, 0) > 0;
+  const showUsdInPrint = printCurrencyMode !== 'uah';
+  const showUahInPrint = printCurrencyMode !== 'usd';
   const solarPowerKw = toNumber(calculations.stationPowerW, 0) / 1000;
   const allRows = Object.values(calculations.groups).flat();
   const inverterRows = allRows.filter((row) => row && String(row.type || "").trim() === "Інвертор");
@@ -3235,6 +3441,8 @@ function App() {
             </select>
             <button type="button" className="secondary menu-action-btn" data-cat="export" style={{background: "#059669"}} onClick={() => exportToExcel("offer", "summary")} data-title="Excel (зведено)"><MenuBtnLabel icon="📊" label="Excel (зведено)" /></button>
             <button type="button" className="secondary menu-action-btn" data-cat="export" style={{background: "#0f766e"}} onClick={() => exportToExcel("offer", "full")} data-title="Excel (повна)"><MenuBtnLabel icon="📗" label="Excel (повна)" /></button>
+            <button type="button" className="secondary menu-action-btn" data-cat="export" style={{background: "#14532d"}} onClick={() => exportToExcel("offer_tax_full")} data-title="Excel (повна + податки)"><MenuBtnLabel icon="🧮" label="Excel (повна + податки)" /></button>
+            <button type="button" className="secondary menu-action-btn" data-cat="export" style={{background: "#0b7285"}} onClick={() => exportToExcel("offer_bank")} data-title="Excel (ФОП без робіт)"><MenuBtnLabel icon="🏦" label="Excel (ФОП без робіт)" /></button>
             <button type="button" className="secondary menu-action-btn" data-cat="print" style={{background: '#7c3aed'}} onClick={() => setPrintMode('offer')} data-title="КП"><MenuBtnLabel icon="📄" label="КП" /></button>
             <button type="button" className="secondary menu-action-btn" data-cat="print" style={{background: '#3b82f6'}} onClick={() => setPrintMode('invoice')} data-title="Накладна"><MenuBtnLabel icon="🧾" label="Накладна" /></button>
           </div>
@@ -3264,14 +3472,42 @@ function App() {
           </div>
 
           <div className={`action-group ${isSidebarLayout ? 'sidebar-menu-group' : ''}`}>
+            <div className="action-group-title">{isSidebarLayout ? '🔐 Акаунт' : 'Акаунт'}</div>
+            <div className="controls-row" style={{display: 'grid', gridTemplateColumns: '1fr', gap: '0.45rem'}}>
+              <input type="text" value={authEmail} onChange={(e) => setAuthEmail(e.target.value)} placeholder="Email" className="project-name-input" />
+              <input type="password" value={authPassword} onChange={(e) => setAuthPassword(e.target.value)} placeholder="Password" className="project-name-input" />
+              <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.4rem'}}>
+                <button type="button" className="secondary menu-action-btn" style={{background: '#0f766e'}} onClick={authRegister}>Реєстрація</button>
+                <button type="button" className="secondary menu-action-btn" style={{background: '#1d4ed8'}} onClick={authLogin}>Увійти</button>
+              </div>
+              <button type="button" className="danger menu-action-btn" onClick={authLogout}>Вийти</button>
+              <div style={{fontSize: '0.8rem', color: '#93c5fd', padding: '0.2rem 0.2rem', lineHeight: 1.35}}>
+                {authUserEmail ? `Увійшов: ${authUserEmail}` : 'Не авторизований'}
+              </div>
+              <div style={{fontSize: '0.75rem', color: '#94a3b8', minHeight: '1rem'}}>
+                {authStatus || ''}
+              </div>
+            </div>
+          </div>
+
+          <div className={`action-group ${isSidebarLayout ? 'sidebar-menu-group' : ''}`}>
             <div className="action-group-title">{isSidebarLayout ? '🧩 Шаблони' : 'Шаблони'}</div>
             <div className="controls-row">
               <input type="text" value={templateName} onChange={(e) => setTemplateName(e.target.value)} placeholder="Назва шаблону..." className="project-name-input" />
+              <select className="secondary template-select" value={templateVisibility} onChange={(e) => setTemplateVisibility(e.target.value)}>
+                <option value="private">Приватний</option>
+                <option value="shared">Загальний</option>
+              </select>
               <button type="button" className="secondary menu-action-btn" data-cat="template" style={{background: '#4b5563'}} onClick={saveTemplate} data-title="Зберегти шаблон"><MenuBtnLabel icon="💾" label="Зберегти шаблон" /></button>
               <button type="button" className="secondary menu-action-btn" data-cat="template" style={{background: '#2563eb'}} onClick={saveTemplateAsNew} data-title="Зберегти як новий"><MenuBtnLabel icon="🆕" label="Зберегти як" /></button>
+              <select className="secondary template-select" value={templateFilter} onChange={(e) => setTemplateFilter(e.target.value)}>
+                <option value="all">Всі шаблони</option>
+                <option value="private">Приватні</option>
+                <option value="shared">Загальні</option>
+              </select>
               <select className="secondary template-select" onChange={(e) => loadTemplate(e.target.value)} value={selectedTemplateId}>
                 <option value="" disabled>Завантажити шаблон...</option>
-                {templates.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                {filteredTemplates.map(t => <option key={t.id} value={t.id}>{`${t.name} [${t.visibility === 'private' ? 'private' : 'shared'}]`}</option>)}
               </select>
               <button type="button" className="danger menu-action-btn" data-cat="danger" disabled={!selectedTemplateId} onClick={() => deleteTemplate(selectedTemplateId)} data-title="Видалити шаблон"><MenuBtnLabel icon="🗑️" label="Видалити шаблон" /></button>
             </div>
@@ -3316,19 +3552,42 @@ function App() {
         <div className="input-group" style={{margin: 0}}>
           <label>Тип титульної сторінки</label>
           <select value={coverPageType} onChange={(e) => setCoverPageType(e.target.value)}>
+            <option value="">Пусто</option>
             {COVER_PAGE_TYPES.map((type) => <option key={type} value={type}>{type}</option>)}
           </select>
         </div>
         <div className="input-group" style={{margin: 0}}>
           <label>Окремий лист у КП</label>
-          <label style={{display: 'flex', alignItems: 'center', gap: '0.5rem', minHeight: '38px', paddingTop: 0}}>
-            <input
-              type="checkbox"
-              checked={showOfferStationSheet}
-              onChange={(e) => setShowOfferStationSheet(e.target.checked)}
-            />
-            <span>Додати “Дані станції”</span>
-          </label>
+          <div style={{display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '0.25rem 1rem', marginTop: '0.1rem'}}>
+            <label style={{display: 'flex', alignItems: 'center', gap: '0.45rem', minHeight: '24px'}}>
+              <input type="checkbox" checked={showOfferStationSheet} onChange={(e) => setShowOfferStationSheet(e.target.checked)} />
+              <span>“Дані станції”</span>
+            </label>
+            <label style={{display: 'flex', alignItems: 'center', gap: '0.45rem', minHeight: '24px'}}>
+              <input type="checkbox" checked={includeManagerInOffer} onChange={(e) => setIncludeManagerInOffer(!!e.target.checked)} />
+              <span>Дані менеджера</span>
+            </label>
+            <label style={{display: 'flex', alignItems: 'center', gap: '0.45rem', minHeight: '24px'}}>
+              <input type="checkbox" checked={includeClientInOffer} onChange={(e) => setIncludeClientInOffer(!!e.target.checked)} />
+              <span>Дані замовника</span>
+            </label>
+            <label style={{display: 'flex', alignItems: 'center', gap: '0.45rem', minHeight: '24px'}}>
+              <input type="checkbox" checked={includeAddressInOffer} onChange={(e) => setIncludeAddressInOffer(!!e.target.checked)} />
+              <span>Адреса об'єкта</span>
+            </label>
+            <label style={{display: 'flex', alignItems: 'center', gap: '0.45rem', minHeight: '24px', gridColumn: '1 / span 2'}}>
+              <input type="checkbox" checked={showObjectTypeOnCover} onChange={(e) => setShowObjectTypeOnCover(!!e.target.checked)} />
+              <span>Тип об'єкта на титульній</span>
+            </label>
+          </div>
+          <div style={{display: 'flex', alignItems: 'center', gap: '0.45rem', marginTop: '0.35rem'}}>
+            <span style={{fontSize: '0.85rem', color: 'var(--text-muted)'}}>Валюта в КП/накладній:</span>
+            <select value={printCurrencyMode} onChange={(e) => setPrintCurrencyMode(e.target.value)} style={{maxWidth: '190px'}}>
+              <option value="both">USD + грн (як зараз)</option>
+              <option value="usd">Тільки USD</option>
+              <option value="uah">Тільки грн</option>
+            </select>
+          </div>
         </div>
         <div className="input-group" style={{margin: 0}}>
           <label>Локація генерації</label>
@@ -3545,7 +3804,11 @@ function App() {
                             value={newProtectionType}
                             onChange={(e) => setNewProtectionType(e.target.value)}
                           >
-                            {PROTECTION_GROUP_CHOICES.map(typeName => <option key={typeName} value={typeName}>{typeName}</option>)}
+                            {PROTECTION_GROUP_CHOICES.map(typeName => (
+                              <option key={typeName} value={typeName}>
+                                {PROTECTION_DISPLAY_NAMES[typeName] || typeName}
+                              </option>
+                            ))}
                           </select>
                           {newProtectionType === "Інше" && (
                             <input
@@ -4634,11 +4897,15 @@ function App() {
               <div className="offer-cover-page">
                 <img className="offer-cover-image" src={coverPageType === 'Квартира' ? './title2.jpg' : './title1.jpg'} alt="Обкладинка КП" />
                 <div className="offer-cover-content">
-                  <div className="offer-cover-top">КОМЕРЦІЙНА ПРОПОЗИЦІЯ · {coverPageType} · {currentYear}</div>
+                  <div className="offer-cover-top">
+                    {showObjectTypeOnCover && coverPageType
+                      ? `КОМЕРЦІЙНА ПРОПОЗИЦІЯ · ${coverPageType} · ${currentYear}`
+                      : `КОМЕРЦІЙНА ПРОПОЗИЦІЯ · ${currentYear}`}
+                  </div>
                   <h1 className="offer-cover-title">{coverMainTitle}</h1>
                   <div className="offer-cover-subtitle">{coverSubtitle}</div>
-                  <div className="offer-cover-address">📍 {coverAddress}</div>
-                  <div className="offer-cover-manager">Менеджер: {managerNameLabel}</div>
+                  {includeAddressInOffer && <div className="offer-cover-address">📍 {coverAddress}</div>}
+                  {includeManagerInOffer && <div className="offer-cover-manager">Менеджер: {managerNameLabel}</div>}
                   <div className="offer-cover-metrics">
                     <div>{hasSolar ? "Сонячне поле" : "Потужність"}: {coverPowerLine}</div>
                     <div>Акумулятор: {coverBatteryLine}</div>
@@ -4670,10 +4937,12 @@ function App() {
                 </div>
               )}
 
-              <div className="invoice-customer">
-                <p><strong>Замовник:</strong> {clientInfo.name || "____________________"}</p>
-                <p><strong>Адреса:</strong> {clientInfo.address || "____________________"}</p>
-              </div>
+              {includeClientInOffer && (
+                <div className="invoice-customer">
+                  <p><strong>Замовник:</strong> {clientInfo.name || "____________________"}</p>
+                  {includeAddressInOffer && <p><strong>Адреса:</strong> {clientInfo.address || "____________________"}</p>}
+                </div>
+              )}
             </div>
 
             {printMode === 'offer' && (
@@ -4707,10 +4976,10 @@ function App() {
                   <col style={{width: '38%'}} />
                   <col style={{width: '6%'}} />
                   <col style={{width: '6%'}} />
-                  <col style={{width: '11.5%'}} />
-                  <col style={{width: '11.5%'}} />
-                  <col style={{width: '11.5%'}} />
-                  <col style={{width: '11.5%'}} />
+                  {showUsdInPrint && <col style={{width: showUahInPrint ? '11.5%' : '23%'}} />}
+                  {showUahInPrint && <col style={{width: showUsdInPrint ? '11.5%' : '23%'}} />}
+                  {showUsdInPrint && <col style={{width: showUahInPrint ? '11.5%' : '23%'}} />}
+                  {showUahInPrint && <col style={{width: showUsdInPrint ? '11.5%' : '23%'}} />}
                </colgroup>
                <thead>
                   <tr>
@@ -4718,10 +4987,10 @@ function App() {
                      <th>Найменування товару / послуги</th>
                      <th>Од.</th>
                      <th>Кіл-ть</th>
-                     <th style={{fontSize: '0.8rem'}}>Ціна, $</th>
-                     <th style={{fontSize: '0.8rem'}}>Ціна, грн</th>
-                     <th style={{fontSize: '0.8rem'}}>Сума, $</th>
-                     <th style={{fontSize: '0.8rem'}}>Сума, грн</th>
+                     {showUsdInPrint && <th style={{fontSize: '0.8rem'}}>Ціна, $</th>}
+                     {showUahInPrint && <th style={{fontSize: '0.8rem'}}>Ціна, грн</th>}
+                     {showUsdInPrint && <th style={{fontSize: '0.8rem'}}>Сума, $</th>}
+                     {showUahInPrint && <th style={{fontSize: '0.8rem'}}>Сума, грн</th>}
                   </tr>
                </thead>
                <tbody>
@@ -4793,10 +5062,10 @@ function App() {
                            <td style={{wordBreak: 'break-word', overflowWrap: 'break-word'}}>{row.name}</td>
                            <td style={{textAlign: 'center', whiteSpace: 'nowrap', fontSize: printMode === 'invoice' ? '0.9rem' : '1.02rem'}}>{row.unit}</td>
                            <td className="text-right" style={{whiteSpace: 'nowrap', fontSize: printMode === 'invoice' ? '0.9rem' : '1.02rem'}}>{row.qty}</td>
-                           <td className="text-right" style={{whiteSpace: 'nowrap', fontSize: printMode === 'invoice' ? '0.9rem' : '1rem'}}>{formatMoney(row.unitPriceUsd)}</td>
-                           <td className="text-right" style={{whiteSpace: 'nowrap', fontSize: printMode === 'invoice' ? '0.9rem' : '1rem'}}>{formatMoney(row.priceUah)}</td>
-                           <td className="text-right" style={{whiteSpace: 'nowrap', fontSize: printMode === 'invoice' ? '0.9rem' : '1rem'}}>{formatMoney(row.sumUsd)}</td>
-                           <td className="text-right" style={{whiteSpace: 'nowrap', fontSize: printMode === 'invoice' ? '0.9rem' : '1rem'}}>{formatMoney(row.sumUah)}</td>
+                           {showUsdInPrint && <td className="text-right" style={{whiteSpace: 'nowrap', fontSize: printMode === 'invoice' ? '0.9rem' : '1rem'}}>{formatMoney(row.unitPriceUsd)}</td>}
+                           {showUahInPrint && <td className="text-right" style={{whiteSpace: 'nowrap', fontSize: printMode === 'invoice' ? '0.9rem' : '1rem'}}>{formatMoney(row.priceUah)}</td>}
+                           {showUsdInPrint && <td className="text-right" style={{whiteSpace: 'nowrap', fontSize: printMode === 'invoice' ? '0.9rem' : '1rem'}}>{formatMoney(row.sumUsd)}</td>}
+                           {showUahInPrint && <td className="text-right" style={{whiteSpace: 'nowrap', fontSize: printMode === 'invoice' ? '0.9rem' : '1rem'}}>{formatMoney(row.sumUah)}</td>}
                         </tr>
                      ));
                   })()}
@@ -4805,39 +5074,51 @@ function App() {
                   {printMode === 'offer' && hasOfferDiscount && (
                     <tr className="print-total-row">
                       <td colSpan="4" className="text-right" style={{fontWeight: 'bold', fontSize: '0.98rem'}}>ЗАГАЛОМ ДО СПЛАТИ (БЕЗ ЗНИЖКИ):</td>
-                      <td colSpan="2" className="text-right" style={{fontWeight: 'bold', fontSize: '0.98rem', whiteSpace: 'nowrap', lineHeight: 1.1}}>
-                        ${totalBeforeDiscountUsdParts.whole},{totalBeforeDiscountUsdParts.frac}
-                      </td>
-                      <td colSpan="2" className="text-right" style={{fontWeight: 'bold', fontSize: '0.98rem', whiteSpace: 'nowrap', lineHeight: 1.1}}>
-                        {totalBeforeDiscountUahParts.whole},{totalBeforeDiscountUahParts.frac} грн
-                      </td>
+                      {showUsdInPrint && (
+                        <td colSpan="2" className="text-right" style={{fontWeight: 'bold', fontSize: '0.98rem', whiteSpace: 'nowrap', lineHeight: 1.1}}>
+                          ${totalBeforeDiscountUsdParts.whole},{totalBeforeDiscountUsdParts.frac}
+                        </td>
+                      )}
+                      {showUahInPrint && (
+                        <td colSpan="2" className="text-right" style={{fontWeight: 'bold', fontSize: '0.98rem', whiteSpace: 'nowrap', lineHeight: 1.1}}>
+                          {totalBeforeDiscountUahParts.whole},{totalBeforeDiscountUahParts.frac} грн
+                        </td>
+                      )}
                     </tr>
                   )}
                   {printMode === 'offer' && hasOfferDiscount && (
                     <tr className="print-total-row">
                       <td colSpan="4" className="text-right" style={{fontWeight: 'bold', fontSize: '0.98rem'}}>ЗНИЖКА ({formatKw(toNumber(calculations.sums.discountPercent, 0))}%):</td>
-                      <td colSpan="2" className="text-right" style={{fontWeight: 'bold', fontSize: '0.98rem', whiteSpace: 'nowrap', lineHeight: 1.1}}>
-                        -${discountUsdParts.whole},{discountUsdParts.frac}
-                      </td>
-                      <td colSpan="2" className="text-right" style={{fontWeight: 'bold', fontSize: '0.98rem', whiteSpace: 'nowrap', lineHeight: 1.1}}>
-                        -{discountUahParts.whole},{discountUahParts.frac} грн
-                      </td>
+                      {showUsdInPrint && (
+                        <td colSpan="2" className="text-right" style={{fontWeight: 'bold', fontSize: '0.98rem', whiteSpace: 'nowrap', lineHeight: 1.1}}>
+                          -${discountUsdParts.whole},{discountUsdParts.frac}
+                        </td>
+                      )}
+                      {showUahInPrint && (
+                        <td colSpan="2" className="text-right" style={{fontWeight: 'bold', fontSize: '0.98rem', whiteSpace: 'nowrap', lineHeight: 1.1}}>
+                          -{discountUahParts.whole},{discountUahParts.frac} грн
+                        </td>
+                      )}
                     </tr>
                   )}
                   <tr className="print-total-row">
                      <td colSpan="4" className="text-right" style={{fontWeight: 'bold', fontSize: printMode === 'invoice' ? '0.98rem' : '1.1rem'}}>
                         {printMode === 'offer' && hasOfferDiscount ? 'ЗАГАЛОМ ДО СПЛАТИ (ЗІ ЗНИЖКОЮ):' : 'ЗАГАЛОМ ДО СПЛАТИ:'}
                      </td>
-                     <td colSpan="2" className="text-right" style={{fontWeight: 'bold', fontSize: printMode === 'invoice' ? '0.98rem' : '1.05rem', whiteSpace: 'nowrap', lineHeight: 1.1}}>
-                        ${totalUsdParts.whole},{totalUsdParts.frac}
-                     </td>
-                     <td colSpan="2" className="text-right" style={{fontWeight: 'bold', fontSize: printMode === 'invoice' ? '0.98rem' : '1.05rem', whiteSpace: 'nowrap', lineHeight: 1.1}}>
-                        {totalUahParts.whole},{totalUahParts.frac} грн
-                     </td>
+                     {showUsdInPrint && (
+                       <td colSpan="2" className="text-right" style={{fontWeight: 'bold', fontSize: printMode === 'invoice' ? '0.98rem' : '1.05rem', whiteSpace: 'nowrap', lineHeight: 1.1}}>
+                          ${totalUsdParts.whole},{totalUsdParts.frac}
+                       </td>
+                     )}
+                     {showUahInPrint && (
+                       <td colSpan="2" className="text-right" style={{fontWeight: 'bold', fontSize: printMode === 'invoice' ? '0.98rem' : '1.05rem', whiteSpace: 'nowrap', lineHeight: 1.1}}>
+                          {totalUahParts.whole},{totalUahParts.frac} грн
+                       </td>
+                     )}
                   </tr>
                </tfoot>
             </table>
-            {printMode === 'offer' && <OfferManagerBar />}
+            {printMode === 'offer' && includeManagerInOffer && <OfferManagerBar />}
             </div>
 
             {printMode === 'invoice' && (
@@ -4945,7 +5226,7 @@ function App() {
                       </div>
                     )}
                   </div>
-                  <OfferManagerBar />
+                  {includeManagerInOffer && <OfferManagerBar />}
                 </div>
               </>
             )}

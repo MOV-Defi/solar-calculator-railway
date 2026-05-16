@@ -1,5 +1,369 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-05-03T14:03:28.498Z",
-  "templates": []
+  "updatedAt": "2026-05-14T10:42:25.191Z",
+  "templates": [
+    {
+      "id": "1778755344396",
+      "name": "Максим 15 квт DEYE",
+      "data": {
+        "equipmentGroups": {
+          "Основне обладнання": [
+            {
+              "id": 1,
+              "type": "ФЕП",
+              "name": "PV модуль Jolywood 630 Wp, Bificial, n-type",
+              "unit": "шт.",
+              "quantity": 16,
+              "price": 125,
+              "currency": "USD",
+              "incomingPrice": 95,
+              "power": 630,
+              "markupPercent": 31.57894736842105
+            },
+            {
+              "id": 2,
+              "type": "Інвертор",
+              "name": "sun-15k-sg05lp3-eu-sm2 — гібридний інвертор deye sun-15k-sg05lp3-eu-sm2 15kw 48v 2 mppt wi-fi 220/380v трифазний",
+              "unit": "шт.",
+              "quantity": 1,
+              "price": 2178,
+              "currency": "USD",
+              "incomingPrice": 1815,
+              "markupPercent": 20
+            },
+            {
+              "id": 3,
+              "type": "АКБ",
+              "name": "se-f5 pro-c — акумуляторна батарея deye se-f5 pro lifepo4 lv 51.2v 100ah 5.12kwh (se-f5 pro-c)",
+              "unit": "шт.",
+              "quantity": 3,
+              "price": 948,
+              "currency": "USD",
+              "incomingPrice": 790,
+              "markupPercent": 20
+            },
+            {
+              "id": 4,
+              "type": "Інше",
+              "name": "Лічільник Smart meter EASTRON SDM630MCT-ETL, з трансформаторами струму ",
+              "unit": "шт.",
+              "quantity": 1,
+              "price": 320,
+              "currency": "USD",
+              "incomingPrice": 159,
+              "markupPercent": 101.25786163522012
+            }
+          ],
+          "Захист PV": [
+            {
+              "id": 51,
+              "type": "Захист PV",
+              "name": "Обмежувач напруги",
+              "unit": "шт.",
+              "quantity": 1,
+              "price": 0,
+              "currency": "USD",
+              "incomingPrice": 0
+            },
+            {
+              "id": 52,
+              "type": "Захист PV",
+              "name": "Тримач запобіжника",
+              "unit": "шт.",
+              "quantity": 1,
+              "price": 0,
+              "currency": "USD",
+              "incomingPrice": 0
+            },
+            {
+              "id": 53,
+              "type": "Захист PV",
+              "name": "Запобіжник",
+              "unit": "шт.",
+              "quantity": 1,
+              "price": 0,
+              "currency": "USD",
+              "incomingPrice": 0
+            },
+            {
+              "id": 54,
+              "type": "Захист PV",
+              "name": "Корпус щита 8 місць",
+              "unit": "шт.",
+              "quantity": 1,
+              "price": 0,
+              "currency": "USD",
+              "incomingPrice": 0
+            }
+          ],
+          "Захист AC": [
+            {
+              "id": 61,
+              "type": "Захист AC",
+              "name": "Автоматичний вимикач AC",
+              "unit": "шт.",
+              "quantity": 1,
+              "price": 0,
+              "currency": "USD",
+              "incomingPrice": 0
+            },
+            {
+              "id": 62,
+              "type": "Захист AC",
+              "name": "ОПН AC 230V/400V",
+              "unit": "шт.",
+              "quantity": 1,
+              "price": 0,
+              "currency": "USD",
+              "incomingPrice": 0
+            },
+            {
+              "id": 63,
+              "type": "Захист AC",
+              "name": "ПЗВ / Дифавтомат",
+              "unit": "шт.",
+              "quantity": 1,
+              "price": 0,
+              "currency": "USD",
+              "incomingPrice": 0
+            },
+            {
+              "id": 64,
+              "type": "Захист AC",
+              "name": "Реле напруги",
+              "unit": "шт.",
+              "quantity": 1,
+              "price": 0,
+              "currency": "USD",
+              "incomingPrice": 0
+            },
+            {
+              "id": 65,
+              "type": "Захист AC",
+              "name": "Щит монтажний AC",
+              "unit": "шт.",
+              "quantity": 1,
+              "price": 0,
+              "currency": "USD",
+              "incomingPrice": 0
+            },
+            {
+              "id": 66,
+              "type": "Захист AC",
+              "name": "Провід ПВ-3 (монтажний)",
+              "unit": "м.п.",
+              "quantity": 5,
+              "price": 0,
+              "currency": "USD",
+              "incomingPrice": 0
+            },
+            {
+              "id": 67,
+              "type": "Захист AC",
+              "name": "Наконечники та витратні матеріали",
+              "unit": "компл",
+              "quantity": 1,
+              "price": 0,
+              "currency": "USD",
+              "incomingPrice": 0
+            }
+          ],
+          "Захист DC": [
+            {
+              "id": 71,
+              "type": "Захист DC",
+              "name": "Роз'єднувач АКБ силовиий",
+              "unit": "шт.",
+              "quantity": 1,
+              "price": 0,
+              "currency": "USD",
+              "incomingPrice": 0
+            },
+            {
+              "id": 72,
+              "type": "Захист DC",
+              "name": "Запобіжник силовиий (125-200A)",
+              "unit": "шт.",
+              "quantity": 1,
+              "price": 0,
+              "currency": "USD",
+              "incomingPrice": 0
+            },
+            {
+              "id": 73,
+              "type": "Захист DC",
+              "name": "Кабель силовий 35-50мм2",
+              "unit": "м.п.",
+              "quantity": 4,
+              "price": 0,
+              "currency": "USD",
+              "incomingPrice": 0
+            },
+            {
+              "id": 74,
+              "type": "Захист DC",
+              "name": "Наконечники силові медні",
+              "unit": "шт.",
+              "quantity": 4,
+              "price": 0,
+              "currency": "USD",
+              "incomingPrice": 0
+            }
+          ],
+          "Кріплення": [
+            {
+              "id": 8,
+              "type": "Кріплення",
+              "name": "На похилий дах ",
+              "unit": "компл",
+              "quantity": 16,
+              "price": 55,
+              "currency": "USD",
+              "incomingPrice": 12
+            }
+          ],
+          "Заземлення": [
+            {
+              "id": 9,
+              "type": "Заземлення",
+              "name": "Стержень обміднений 1.5м",
+              "unit": "шт.",
+              "quantity": 1,
+              "price": 250,
+              "currency": "USD",
+              "incomingPrice": 100
+            }
+          ],
+          "Кабельна продукція": [
+            {
+              "id": 4,
+              "type": "Кабель",
+              "name": "KBE DB+ 6.0mm DC black",
+              "unit": "м.п.",
+              "quantity": 400,
+              "price": 1.7,
+              "currency": "USD",
+              "incomingPrice": 1.12,
+              "markupPercent": 51.78571428571427
+            },
+            {
+              "id": 41,
+              "type": "Кабель",
+              "name": "Конектор MC4 (пара)",
+              "unit": "компл",
+              "quantity": 4,
+              "price": 2,
+              "currency": "USD",
+              "incomingPrice": 1,
+              "markupPercent": 100
+            },
+            {
+              "id": 1778755150054,
+              "type": "",
+              "name": "Кабельна продукція AC (по факту)",
+              "unit": "компл",
+              "quantity": 1,
+              "price": 50,
+              "currency": "USD",
+              "incomingPrice": 30,
+              "markupPercent": 66.66666666666666,
+              "power": 0
+            },
+            {
+              "id": 1778755200770,
+              "type": "",
+              "name": "Продукція для прокладання кабелю (по факту)",
+              "unit": "компл",
+              "quantity": 1,
+              "price": 250,
+              "currency": "USD",
+              "incomingPrice": 187.5,
+              "markupPercent": 33.33333333333333,
+              "power": 0
+            }
+          ]
+        },
+        "offerPurpose": "Для власного споживання",
+        "coverSystemName": "",
+        "coverPageType": "Будинок",
+        "showOfferStationSheet": true,
+        "generationLocation": "Миколаїв",
+        "generationMountType": "roof",
+        "energyTariffUah": 16,
+        "typicalLoadKw": 2,
+        "coverQrUrl": "https://www.solarservice.pro/",
+        "managerContacts": [
+          {
+            "id": "manager_oleg_minakov",
+            "name": "Олег Мінаков",
+            "phone": "+380933990622"
+          }
+        ],
+        "selectedManagerId": "manager_oleg_minakov",
+        "workItems": [],
+        "otherExpenses": [
+          {
+            "id": 1,
+            "name": "Транспорт / ПММ",
+            "quantity": 1,
+            "price": 100,
+            "currency": "USD",
+            "incomingPrice": 0,
+            "markupPercent": 0
+          }
+        ],
+        "installPercent": 20,
+        "clientDiscountPercent": 0,
+        "taxMode": "none",
+        "groupSettings": {
+          "Захист PV": {
+            "mode": "fixed",
+            "name": "Захист PV",
+            "price": 450,
+            "incomingPrice": 0,
+            "currency": "USD",
+            "unit": "компл",
+            "quantity": 1,
+            "markupPercent": 0,
+            "pvTemplateStrings": 1,
+            "pvTemplateType": "Стандарт",
+            "pvCableMetersPerString": 150,
+            "pvAutoCableQuantity": false
+          },
+          "Захист AC": {
+            "mode": "fixed",
+            "name": "Захист AC",
+            "price": 420,
+            "incomingPrice": 0,
+            "currency": "USD",
+            "unit": "компл",
+            "quantity": 1,
+            "markupPercent": 0
+          },
+          "Захист DC": {
+            "mode": "fixed",
+            "name": "Захист DC",
+            "price": 180,
+            "incomingPrice": 0,
+            "currency": "USD",
+            "unit": "компл",
+            "quantity": 1,
+            "markupPercent": 0
+          },
+          "Кріплення": {
+            "mode": "detailed",
+            "name": "Кріплення (металочерепиця/профнастил)",
+            "price": 0,
+            "incomingPrice": 0,
+            "currency": "USD",
+            "unit": "компл",
+            "quantity": 16,
+            "markupPercent": 0
+          }
+        },
+        "autoMountingQuantity": true
+      },
+      "visibility": "shared"
+    }
+  ]
 }
