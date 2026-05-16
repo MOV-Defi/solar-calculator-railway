@@ -673,6 +673,23 @@ function App() {
   const templatesWriteTimerRef = useRef(null);
   const lastTemplatesSignatureRef = useRef('');
 
+  useEffect(() => {
+    (async () => {
+      try {
+        const cfg = window.__APP_CONFIG__ || {};
+        if (cfg.SUPABASE_URL && cfg.SUPABASE_ANON_KEY) return;
+        const res = await fetch('/api/runtime-config', { method: 'GET' });
+        if (!res.ok) return;
+        const payload = await res.json().catch(() => null);
+        const data = payload?.data || {};
+        window.__APP_CONFIG__ = Object.assign({}, cfg, {
+          SUPABASE_URL: String(data.SUPABASE_URL || '').trim(),
+          SUPABASE_ANON_KEY: String(data.SUPABASE_ANON_KEY || '').trim()
+        });
+      } catch (_) {}
+    })();
+  }, []);
+
   useEffect(() => { localStorage.setItem('solar_projectType', JSON.stringify(projectType)); }, [projectType]);
   useEffect(() => { localStorage.setItem('solar_workspacePath', JSON.stringify(workspacePath)); }, [workspacePath]);
   useEffect(() => { localStorage.setItem('solar_projectFolderName', JSON.stringify(projectFolderName)); }, [projectFolderName]);

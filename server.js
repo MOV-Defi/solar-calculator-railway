@@ -97,6 +97,16 @@ app.get('/api/health', (_req, res) => {
   res.json({ ok: true, service: 'calk-v4-railway', ts: new Date().toISOString() });
 });
 
+app.get('/api/runtime-config', (_req, res) => {
+  res.json({
+    ok: true,
+    data: {
+      SUPABASE_URL: SUPABASE_URL || '',
+      SUPABASE_ANON_KEY: SUPABASE_ANON_KEY || ''
+    }
+  });
+});
+
 app.get('/api/templates', async (_req, res) => {
   try {
     const data = hasSupabaseConfig() ? await readSupabaseTemplates() : readLocalTemplates();
