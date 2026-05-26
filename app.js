@@ -176,6 +176,33 @@ const PV_ENCLOSURE_SIZES = [8, 12, 18, 24, 36];
 const DEFAULT_GROUPS_SNAPSHOT = JSON.parse(JSON.stringify(INITIAL_GROUPS));
 const createDefaultGroups = () => JSON.parse(JSON.stringify(DEFAULT_GROUPS_SNAPSHOT));
 const cloneGroupItems = (groupKey) => JSON.parse(JSON.stringify(DEFAULT_GROUPS_SNAPSHOT[groupKey] || []));
+const orderEquipmentGroups = (groups) => {
+  const source = (groups && typeof groups === 'object') ? groups : createDefaultGroups();
+  const ordered = {};
+  const preferredOrder = [
+    "Основне обладнання",
+    "Захист PV",
+    "Захист AC",
+    "Захист DC",
+    "Кріплення",
+    "Кабельна продукція",
+    "Заземлення"
+  ];
+
+  preferredOrder.forEach((key) => {
+    if (Object.prototype.hasOwnProperty.call(source, key)) {
+      ordered[key] = source[key];
+    }
+  });
+
+  Object.keys(source).forEach((key) => {
+    if (!Object.prototype.hasOwnProperty.call(ordered, key)) {
+      ordered[key] = source[key];
+    }
+  });
+
+  return ordered;
+};
 const cloneList = (list) => list.map(item => ({ ...item }));
 const createCommercialWorkItems = () => DEFAULT_COMMERCIAL_WORK_ITEMS.map((name, idx) => ({
   id: Date.now() + idx + 1,
@@ -1294,7 +1321,7 @@ function App() {
         ? data.selectedManagerId
         : loadedManagers[0].id
     );
-    setEquipmentGroups(data.equipmentGroups && typeof data.equipmentGroups === 'object' ? data.equipmentGroups : createDefaultGroups());
+    setEquipmentGroups(orderEquipmentGroups(data.equipmentGroups && typeof data.equipmentGroups === 'object' ? data.equipmentGroups : createDefaultGroups()));
     setOtherExpenses(Array.isArray(data.otherExpenses) ? cloneList(data.otherExpenses) : cloneList(DEFAULT_OTHER_EXPENSES));
     setWorkItems(Array.isArray(data.workItems) ? cloneList(data.workItems) : cloneList(DEFAULT_WORK_ITEMS));
     setInstallPercent(data.installPercent ?? 15);
@@ -1325,7 +1352,7 @@ function App() {
     const loadedManagers = Array.isArray(data.managerContacts) && data.managerContacts.length > 0
       ? data.managerContacts
       : DEFAULT_MANAGER_CONTACTS;
-    setEquipmentGroups(data.equipmentGroups && typeof data.equipmentGroups === 'object' ? data.equipmentGroups : createDefaultGroups());
+    setEquipmentGroups(orderEquipmentGroups(data.equipmentGroups && typeof data.equipmentGroups === 'object' ? data.equipmentGroups : createDefaultGroups()));
     setWorkItems(Array.isArray(data.workItems) ? cloneList(data.workItems) : cloneList(DEFAULT_WORK_ITEMS));
     setOtherExpenses(Array.isArray(data.otherExpenses) ? cloneList(data.otherExpenses) : cloneList(DEFAULT_OTHER_EXPENSES));
     setOfferPurpose(typeof data.offerPurpose === 'string' ? data.offerPurpose : DEFAULT_OFFER_PURPOSE);
@@ -1379,7 +1406,7 @@ function App() {
     const loadedManagers = Array.isArray(data.managerContacts) && data.managerContacts.length > 0
       ? data.managerContacts
       : DEFAULT_MANAGER_CONTACTS;
-    setEquipmentGroups(data.equipmentGroups && typeof data.equipmentGroups === 'object' ? data.equipmentGroups : createDefaultGroups());
+    setEquipmentGroups(orderEquipmentGroups(data.equipmentGroups && typeof data.equipmentGroups === 'object' ? data.equipmentGroups : createDefaultGroups()));
     setWorkItems(Array.isArray(data.workItems) ? cloneList(data.workItems) : cloneList(DEFAULT_WORK_ITEMS));
     setOtherExpenses(Array.isArray(data.otherExpenses) ? cloneList(data.otherExpenses) : cloneList(DEFAULT_OTHER_EXPENSES));
     setOfferPurpose(typeof data.offerPurpose === 'string' ? data.offerPurpose : DEFAULT_OFFER_PURPOSE);

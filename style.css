@@ -1719,7 +1719,7 @@ input[type="number"]::-webkit-inner-spin-button {
 
 .account-templates-row {
   display: grid;
-  grid-template-columns: minmax(320px, 760px) minmax(420px, 1fr);
+  grid-template-columns: minmax(300px, 520px) minmax(640px, 1fr);
   gap: 0.8rem;
   align-items: start;
 }
