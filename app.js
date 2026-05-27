@@ -516,6 +516,8 @@ function App() {
   const [taxDistributionApplied, setTaxDistributionApplied] = useState(() => getSaved('solar_taxDistributionApplied', false));
   const [taxDistributionScope, setTaxDistributionScope] = useState(() => getSaved('solar_taxDistributionScope', 'nonMainGoods'));
   const [vatRecalcScope, setVatRecalcScope] = useState(() => getSaved('solar_vatRecalcScope', 'goods_all'));
+  const [vatRecalcApplied, setVatRecalcApplied] = useState(() => getSaved('solar_vatRecalcApplied', false));
+  const [vatRecalcBackup, setVatRecalcBackup] = useState(() => getSaved('solar_vatRecalcBackup', null));
   const [installPercentTaxUsd, setInstallPercentTaxUsd] = useState(() => getSaved('solar_installPercentTaxUsd', 0));
   const [autoInstallPercentEnabled, setAutoInstallPercentEnabled] = useState(() => getSaved('solar_autoInstallPercentEnabled', true));
   const [groupSettings, setGroupSettings] = useState(() => migrateProtectionDisplayNames(getSaved('solar_groupSettings', createDefaultGroupSettings())));
@@ -2419,6 +2421,8 @@ function App() {
   useEffect(() => { localStorage.setItem('solar_taxDistributionApplied', JSON.stringify(taxDistributionApplied)); }, [taxDistributionApplied]);
   useEffect(() => { localStorage.setItem('solar_taxDistributionScope', JSON.stringify(taxDistributionScope)); }, [taxDistributionScope]);
   useEffect(() => { localStorage.setItem('solar_vatRecalcScope', JSON.stringify(vatRecalcScope)); }, [vatRecalcScope]);
+  useEffect(() => { localStorage.setItem('solar_vatRecalcApplied', JSON.stringify(vatRecalcApplied)); }, [vatRecalcApplied]);
+  useEffect(() => { localStorage.setItem('solar_vatRecalcBackup', JSON.stringify(vatRecalcBackup)); }, [vatRecalcBackup]);
   useEffect(() => { localStorage.setItem('solar_installPercentTaxUsd', JSON.stringify(installPercentTaxUsd)); }, [installPercentTaxUsd]);
   useEffect(() => { localStorage.setItem('solar_autoInstallPercentEnabled', JSON.stringify(autoInstallPercentEnabled)); }, [autoInstallPercentEnabled]);
   useEffect(() => { localStorage.setItem('solar_groupSettings', JSON.stringify(groupSettings)); }, [groupSettings]);
@@ -3278,11 +3282,21 @@ function App() {
   };
 
   const applyVatRecalc = () => {
+    if (vatRecalcApplied) {
+      alert('Перерахунок ПДВ вже застосовано. Спочатку натисніть "Відмінити перерахунок ПДВ".');
+      return;
+    }
     const vatFactor = 1.2;
     const shouldApplyToGroup = (groupKey) => {
       if (vatRecalcScope === 'main_only') return groupKey === 'Основне обладнання';
       return true;
     };
+
+    setVatRecalcBackup({
+      equipmentGroups: JSON.parse(JSON.stringify(equipmentGroups || {})),
+      groupSettings: JSON.parse(JSON.stringify(groupSettings || {})),
+      workItems: JSON.parse(JSON.stringify(workItems || []))
+    });
 
     setEquipmentGroups((prev) => {
       const next = { ...prev };
@@ -3322,8 +3336,22 @@ function App() {
         return { ...it, incomingPrice: nextIncoming, price: nextPrice };
       }));
     }
+    setVatRecalcApplied(true);
 
     alert('Перерахунок з ПДВ 20% застосовано.');
+  };
+
+  const rollbackVatRecalc = () => {
+    if (!vatRecalcApplied || !vatRecalcBackup) {
+      alert('Немає застосованого перерахунку ПДВ для відміни.');
+      return;
+    }
+    setEquipmentGroups(JSON.parse(JSON.stringify(vatRecalcBackup.equipmentGroups || {})));
+    setGroupSettings(JSON.parse(JSON.stringify(vatRecalcBackup.groupSettings || {})));
+    setWorkItems(JSON.parse(JSON.stringify(vatRecalcBackup.workItems || [])));
+    setVatRecalcApplied(false);
+    setVatRecalcBackup(null);
+    alert('Перерахунок ПДВ відмінено.');
   };
   const safeEvalQuickCalc = (expr) => {
     const normalized = String(expr || '').replace(',', '.').replace(/\s+/g, '');
@@ -4788,6 +4816,9 @@ function App() {
                 </div>
                 <button type="button" className="secondary" style={{background: '#166534'}} onClick={applyVatRecalc}>
                   Застосувати перерахунок ПДВ
+                </button>
+                <button type="button" className="secondary" style={{background: '#475569', marginLeft: '0.5rem'}} onClick={rollbackVatRecalc}>
+                  Відмінити перерахунок ПДВ
                 </button>
               </div>
             )}
