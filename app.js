@@ -29,6 +29,11 @@ const TAX_DISTRIBUTION_SCOPES = {
   allGoods: "Весь товар, включно з Основним обладнанням",
   goodsWorksLogistics: "Товар + роботи + логістика"
 };
+const VAT_RECALC_SCOPES = {
+  goods_all: "Весь товар",
+  main_only: "Тільки Основне обладнання",
+  goods_and_works: "Всі товари + роботи"
+};
 const PV_TEMPLATE_TYPES = ["Стандарт", "Victron", "Інше"];
 const MOUNTING_TEMPLATE_TYPES = [
   "Похилий дах",
@@ -510,6 +515,7 @@ function App() {
   const [lockedDistributedTaxUsd, setLockedDistributedTaxUsd] = useState(() => getSaved('solar_lockedDistributedTaxUsd', null));
   const [taxDistributionApplied, setTaxDistributionApplied] = useState(() => getSaved('solar_taxDistributionApplied', false));
   const [taxDistributionScope, setTaxDistributionScope] = useState(() => getSaved('solar_taxDistributionScope', 'nonMainGoods'));
+  const [vatRecalcScope, setVatRecalcScope] = useState(() => getSaved('solar_vatRecalcScope', 'goods_all'));
   const [installPercentTaxUsd, setInstallPercentTaxUsd] = useState(() => getSaved('solar_installPercentTaxUsd', 0));
   const [autoInstallPercentEnabled, setAutoInstallPercentEnabled] = useState(() => getSaved('solar_autoInstallPercentEnabled', true));
   const [groupSettings, setGroupSettings] = useState(() => migrateProtectionDisplayNames(getSaved('solar_groupSettings', createDefaultGroupSettings())));
@@ -2412,6 +2418,7 @@ function App() {
   useEffect(() => { localStorage.setItem('solar_lockedDistributedTaxUsd', JSON.stringify(lockedDistributedTaxUsd)); }, [lockedDistributedTaxUsd]);
   useEffect(() => { localStorage.setItem('solar_taxDistributionApplied', JSON.stringify(taxDistributionApplied)); }, [taxDistributionApplied]);
   useEffect(() => { localStorage.setItem('solar_taxDistributionScope', JSON.stringify(taxDistributionScope)); }, [taxDistributionScope]);
+  useEffect(() => { localStorage.setItem('solar_vatRecalcScope', JSON.stringify(vatRecalcScope)); }, [vatRecalcScope]);
   useEffect(() => { localStorage.setItem('solar_installPercentTaxUsd', JSON.stringify(installPercentTaxUsd)); }, [installPercentTaxUsd]);
   useEffect(() => { localStorage.setItem('solar_autoInstallPercentEnabled', JSON.stringify(autoInstallPercentEnabled)); }, [autoInstallPercentEnabled]);
   useEffect(() => { localStorage.setItem('solar_groupSettings', JSON.stringify(groupSettings)); }, [groupSettings]);
@@ -3268,6 +3275,55 @@ function App() {
   const resetTaxDistributionState = () => {
     setTaxDistributionApplied(false);
     setLockedDistributedTaxUsd(null);
+  };
+
+  const applyVatRecalc = () => {
+    const vatFactor = 1.2;
+    const shouldApplyToGroup = (groupKey) => {
+      if (vatRecalcScope === 'main_only') return groupKey === 'Основне обладнання';
+      return true;
+    };
+
+    setEquipmentGroups((prev) => {
+      const next = { ...prev };
+      Object.keys(next).forEach((groupKey) => {
+        if (!shouldApplyToGroup(groupKey)) return;
+        next[groupKey] = (next[groupKey] || []).map((item) => {
+          const incoming = Math.max(0, toNumber(item.incomingPrice, 0));
+          const markup = toNumber(item.markupPercent, 0);
+          const nextIncoming = incoming * vatFactor;
+          const nextPrice = nextIncoming * (1 + markup / 100);
+          return { ...item, incomingPrice: nextIncoming, price: nextPrice };
+        });
+      });
+      return next;
+    });
+
+    setGroupSettings((prev) => {
+      const next = { ...prev };
+      Object.keys(next).forEach((groupKey) => {
+        if (!shouldApplyToGroup(groupKey)) return;
+        const settings = next[groupKey] || {};
+        const incoming = Math.max(0, toNumber(settings.incomingPrice, 0));
+        const markup = toNumber(settings.markupPercent, 0);
+        const nextIncoming = incoming * vatFactor;
+        const nextPrice = nextIncoming * (1 + markup / 100);
+        next[groupKey] = { ...settings, incomingPrice: nextIncoming, price: nextPrice };
+      });
+      return next;
+    });
+
+    if (vatRecalcScope === 'goods_and_works') {
+      setWorkItems((prev) => (prev || []).map((it) => {
+        const incoming = Math.max(0, toNumber(it.incomingPrice, 0));
+        const markup = toNumber(it.markupPercent, 0);
+        const nextIncoming = incoming * vatFactor;
+        const nextPrice = nextIncoming * (1 + markup / 100);
+        return { ...it, incomingPrice: nextIncoming, price: nextPrice };
+      }));
+    }
+
+    alert('Перерахунок з ПДВ 20% застосовано.');
   };
   const safeEvalQuickCalc = (expr) => {
     const normalized = String(expr || '').replace(',', '.').replace(/\s+/g, '');
@@ -4716,6 +4772,22 @@ function App() {
                 </button>
                 <button type="button" className="secondary" style={{background: '#475569'}} onClick={rollbackDistributedTax}>
                   Відмінити розкид
+                </button>
+              </div>
+            )}
+            {!clientMode && (
+              <div style={{marginBottom: '0.9rem', padding: '0.7rem', border: '1px solid var(--border-color)', borderRadius: '8px'}}>
+                <div style={{fontWeight: 700, marginBottom: '0.5rem'}}>Перерахунок цін з ПДВ (+20% до собівартості)</div>
+                <div className="input-group" style={{marginBottom: '0.5rem'}}>
+                  <label>Для яких категорій</label>
+                  <select value={vatRecalcScope} onChange={(e) => setVatRecalcScope(e.target.value)}>
+                    {Object.entries(VAT_RECALC_SCOPES).map(([key, label]) => (
+                      <option key={key} value={key}>{label}</option>
+                    ))}
+                  </select>
+                </div>
+                <button type="button" className="secondary" style={{background: '#166534'}} onClick={applyVatRecalc}>
+                  Застосувати перерахунок ПДВ
                 </button>
               </div>
             )}
