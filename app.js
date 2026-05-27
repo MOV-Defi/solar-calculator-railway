@@ -3508,6 +3508,14 @@ function App() {
               )}
               <div className={`flex flex-col gap-1 ${menuCollapsed ? 'hidden' : ''}`} style={{minWidth: isSidebarLayout && !menuCollapsed ? '250px' : '0'}}>
                 <input type="text" value={projectName} onChange={(e) => setProjectName(e.target.value)} placeholder="Назва проєкту..." className="project-name-input" style={{width: '100%'}} />
+                <input
+                  type="text"
+                  value={projectFolderName}
+                  onChange={(e) => setProjectFolderName(e.target.value)}
+                  placeholder="Назва папки проєкту (пусто = авто)"
+                  className="project-name-input"
+                  style={{width: '100%'}}
+                />
               </div>
               <button type="button" className="secondary light-surface-btn menu-action-btn" data-cat="project" onClick={saveProject} data-title="Зберегти проєкт"><MenuBtnLabel icon="💾" label="Зберегти проєкт" /></button>
               <button type="button" className="secondary menu-action-btn" data-cat="project" style={{background: '#374151'}} onClick={openProjectPicker} data-title="Відкрити проєкт"><MenuBtnLabel icon="📂" label="Відкрити проєкт" /></button>
