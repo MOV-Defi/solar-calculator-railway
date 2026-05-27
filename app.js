@@ -1343,8 +1343,10 @@ function App() {
     const safeName = projectName.trim() || baseDocName;
     const generatedFolder = toSafeFilePart(baseDocName).replace(/\s+/g, '_') || (`Project_` + Date.now());
     const normalizedFolder = (projectFolderName || "").trim();
-    const isLegacyFolderName = /^(проєкт|проект|project)[_\-\s\d.]*$/i.test(normalizedFolder);
-    const computedFolder = (!normalizedFolder || isLegacyFolderName) ? generatedFolder : normalizedFolder;
+    const normalizedProjectName = (projectName || "").trim();
+    const manualFolderCandidate = normalizedFolder || normalizedProjectName;
+    const isLegacyFolderName = /^(проєкт|проект|project)[_\-\s\d.]*$/i.test(manualFolderCandidate);
+    const computedFolder = (!manualFolderCandidate || isLegacyFolderName) ? generatedFolder : manualFolderCandidate;
     rememberProjectCatalog(equipmentGroups);
     await persistProductsCatalog(productLastValues);
 
