@@ -3731,6 +3731,30 @@ body.pdf-capture-offer .offer-station-sheet-new-page {
   gap: 0.45rem;
 }
 
+/* Sidebar expanded mode hard-fix: keep project/account/template controls readable */
+.layout-sidebar:not(.menu-collapsed) .top-shell .controls-row > button,
+.layout-sidebar:not(.menu-collapsed) .top-shell .controls-row > .secondary,
+.layout-sidebar:not(.menu-collapsed) .top-shell .controls-row > .danger,
+.layout-sidebar:not(.menu-collapsed) .top-shell .controls-row > input,
+.layout-sidebar:not(.menu-collapsed) .top-shell .controls-row > select,
+.layout-sidebar:not(.menu-collapsed) .top-shell .controls-row > div {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+}
+
+.layout-sidebar:not(.menu-collapsed) .top-shell .controls-row .menu-btn-content {
+  justify-content: center !important;
+}
+
+.layout-sidebar:not(.menu-collapsed) .top-shell .controls-row .menu-btn-content .btn-label {
+  display: inline !important;
+}
+
+.layout-sidebar:not(.menu-collapsed) .top-shell .controls-row .menu-btn-content .btn-icon {
+  display: inline-flex !important;
+}
+
 .layout-sidebar .layout-main {
   margin-left: 408px;
 }
