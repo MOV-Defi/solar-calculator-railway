@@ -516,7 +516,6 @@ function App() {
 
   const [projectName, setProjectName] = useState("");
   const [projectType, setProjectType] = useState(() => getSaved('solar_projectType', 'commercial'));
-  const [projectFolderName, setProjectFolderName] = useState(() => getSaved('solar_projectFolderName', ''));
   const [showNewProjectDialog, setShowNewProjectDialog] = useState(false);
   const [showQuickCalc, setShowQuickCalc] = useState(false);
   const [quickCalcExpr, setQuickCalcExpr] = useState('');
@@ -719,7 +718,6 @@ function App() {
 
   useEffect(() => { localStorage.setItem('solar_projectType', JSON.stringify(projectType)); }, [projectType]);
   useEffect(() => { localStorage.setItem('solar_workspacePath', JSON.stringify(workspacePath)); }, [workspacePath]);
-  useEffect(() => { localStorage.setItem('solar_projectFolderName', JSON.stringify(projectFolderName)); }, [projectFolderName]);
   useEffect(() => { localStorage.setItem('solar_clientMode', JSON.stringify(clientMode)); }, [clientMode]);
   useEffect(() => { localStorage.setItem('solar_templates', JSON.stringify(templates)); }, [templates]);
   useEffect(() => { localStorage.setItem('solar_templateVisibility', JSON.stringify(templateVisibility)); }, [templateVisibility]);
@@ -1095,7 +1093,7 @@ function App() {
   };
 
   const openProjectFolder = async () => {
-    const projectFolder = String(projectFolderName || '').trim();
+    const projectFolder = String(projectName || '').trim();
     if (!projectFolder) {
       alert('Спочатку збережіть або відкрийте проєкт, щоб була відома папка проєкту.');
       return;
@@ -1279,7 +1277,6 @@ function App() {
     setGroupSettings(data.groupSettings && typeof data.groupSettings === 'object' ? migrateProtectionDisplayNames(data.groupSettings) : createDefaultGroupSettings());
     setProjectType(project.type || 'commercial');
     setProjectName(project.name || "");
-    setProjectFolderName(project.projectFolderName || data.projectFolderName || "");
     if (typeof data.autoMountingQuantity === 'boolean') {
       setAutoMountingQuantity(data.autoMountingQuantity);
     } else {
@@ -1342,9 +1339,7 @@ function App() {
     const baseDocName = buildDocumentBaseName(clientInfo, calculations.stationPowerW);
     const safeName = projectName.trim() || baseDocName;
     const generatedFolder = toSafeFilePart(baseDocName).replace(/\s+/g, '_') || (`Project_` + Date.now());
-    const normalizedFolder = (projectFolderName || "").trim();
-    const normalizedProjectName = (projectName || "").trim();
-    const manualFolderCandidate = normalizedFolder || normalizedProjectName;
+    const manualFolderCandidate = (projectName || "").trim();
     const isLegacyFolderName = /^(проєкт|проект|project)[_\-\s\d.]*$/i.test(manualFolderCandidate);
     const computedFolder = (!manualFolderCandidate || isLegacyFolderName) ? generatedFolder : manualFolderCandidate;
     rememberProjectCatalog(equipmentGroups);
@@ -1413,11 +1408,6 @@ function App() {
       computedFolder
     );
     setProjectName(safeName);
-    if (saveResult?.location === 'workspace') {
-      setProjectFolderName(computedFolder);
-    } else {
-      setProjectFolderName('');
-    }
   };
 
   const openProjectPicker = () => {
@@ -1586,7 +1576,6 @@ function App() {
     setGroupSettings(nextGroupSettings);
     setProjectType(type);
     setProjectName("");
-    setProjectFolderName("");
     setTemplateName("");
     setSelectedTemplateId("");
     setNewProtectionType("Захист PV");
@@ -1708,7 +1697,7 @@ function App() {
             usd: toNumber(rates.usd, 0)
           },
           workspaceHandle,
-          projectFolderName,
+          projectFolderName: (projectName || '').trim(),
           extraPercent
         });
         return;
@@ -1722,7 +1711,7 @@ function App() {
           clientInfo,
           calculations,
           workspaceHandle,
-          projectFolderName,
+          projectFolderName: (projectName || '').trim(),
           detailLevel: 'full',
           includeTaxBreakdown: false,
           separateTaxSheet: true
@@ -1738,7 +1727,7 @@ function App() {
           clientInfo,
           calculations,
           workspaceHandle,
-          projectFolderName,
+          projectFolderName: (projectName || '').trim(),
           detailLevel
         });
         return;
@@ -1757,7 +1746,7 @@ function App() {
         installPercent,
         managerCommissionRate,
         workspaceHandle,
-        projectFolderName,
+        projectFolderName: (projectName || '').trim(),
         groupSettings,
         detailLevel
       });
@@ -1773,7 +1762,7 @@ function App() {
       clientInfo,
       calculations,
       workspaceHandle,
-      projectFolderName,
+      projectFolderName: (projectName || '').trim(),
       appendedPdfFiles: printMode === 'offer' ? offerAppendPdfFiles : []
     });
   };
@@ -3409,14 +3398,6 @@ function App() {
               )}
               <div className={`flex flex-col gap-1 ${menuCollapsed ? 'hidden' : ''}`} style={{minWidth: isSidebarLayout && !menuCollapsed ? '250px' : '0'}}>
                 <input type="text" value={projectName} onChange={(e) => setProjectName(e.target.value)} placeholder="Назва проєкту..." className="project-name-input" style={{width: '100%'}} />
-                <input
-                  type="text"
-                  value={projectFolderName}
-                  onChange={(e) => setProjectFolderName(e.target.value)}
-                  placeholder="Назва папки проєкту (пусто = авто)"
-                  className="project-name-input"
-                  style={{width: '100%'}}
-                />
               </div>
               <button type="button" className="secondary light-surface-btn menu-action-btn" data-cat="project" onClick={saveProject} data-title="Зберегти проєкт"><MenuBtnLabel icon="💾" label="Зберегти проєкт" /></button>
               <button type="button" className="secondary menu-action-btn" data-cat="project" style={{background: '#374151'}} onClick={openProjectPicker} data-title="Відкрити проєкт"><MenuBtnLabel icon="📂" label="Відкрити проєкт" /></button>
