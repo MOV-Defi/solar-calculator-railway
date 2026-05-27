@@ -858,107 +858,6 @@ function App() {
     });
   }, []);
 
-  const hvBatterySnapshot = useMemo(() => {
-    const mainItems = equipmentGroups["Основне обладнання"] || [];
-    return mainItems
-      .filter(item => String(item?.type || '') === 'АКБ')
-      .map(item => `${item.name}:${item.quantity}`)
-      .join('|');
-  }, [equipmentGroups["Основне обладнання"]]);
-
-  useEffect(() => {
-    if (isApplyingSnapshotRef.current) return;
-    setEquipmentGroups(prev => {
-      const rows = Array.isArray(prev["Основне обладнання"]) ? prev["Основне обладнання"] : [];
-      const required = {};
-
-      rows.forEach((row) => {
-        if (String(row?.type || '') !== 'АКБ') return;
-        const bundle = getHvBundleForBattery(row?.name || '');
-        if (!bundle) return;
-        const qty = Math.max(1, Math.round(toNumber(row?.quantity, 1)));
-        required[`BMS|${bundle.bms}`] = (required[`BMS|${bundle.bms}`] || 0) + qty;
-        required[`Стійка|${bundle.rack}`] = (required[`Стійка|${bundle.rack}`] || 0) + qty;
-      });
-
-      let changed = false;
-      let nextRows = [...rows];
-      const consumedIndices = new Set();
-
-      // Process required items: find existing or placeholders
-      Object.entries(required).forEach(([key, qty]) => {
-        const [type, name] = key.split('|');
-        
-        // 1. Try to find exact match among unconsumed
-        let foundIdx = nextRows.findIndex((item, i) => 
-          !consumedIndices.has(i) && 
-          String(item?.type || '') === type && 
-          String(item?.name || '').trim() === name
-        );
-
-        // 2. Try to find a placeholder match among unconsumed
-        if (foundIdx < 0) {
-          foundIdx = nextRows.findIndex((item, i) => {
-            if (consumedIndices.has(i)) return false;
-            if (String(item?.type || '') !== type) return false;
-            
-            const itemNameNormalized = normalizeForMatch(item?.name || "");
-            const isPlaceholder = 
-              itemNameNormalized === "" || 
-              itemNameNormalized === normalizeForMatch("BMS плата") || 
-              itemNameNormalized === normalizeForMatch("Стійка для обладнання") ||
-              item?.hvAutoLinked;
-            
-            return isPlaceholder && !item?.hvManualOverride;
-          });
-        }
-
-        if (foundIdx >= 0) {
-          consumedIndices.add(foundIdx);
-          const item = nextRows[foundIdx];
-          if (item.name !== name || toNumber(item.quantity, 0) !== qty) {
-            nextRows[foundIdx] = { ...item, name, quantity: qty, hvAutoLinked: true };
-            changed = true;
-          }
-        } else {
-          // No match, create new
-          const newRow = {
-            id: Date.now() + Math.floor(Math.random() * 100000),
-            type,
-            name,
-            unit: "шт.",
-            quantity: qty,
-            price: 0,
-            currency: "USD",
-            incomingPrice: 0,
-            markupPercent: 0,
-            hvAutoLinked: true
-          };
-          nextRows.push(newRow);
-          consumedIndices.add(nextRows.length - 1);
-          changed = true;
-        }
-      });
-
-      // Cleanup: remove hvAutoLinked items that were NOT consumed in this pass
-      const finalRows = nextRows.filter((item, i) => {
-        if (!item?.hvAutoLinked) return true;
-        if (item?.hvManualOverride) return true;
-        const type = String(item?.type || '');
-        if (type !== 'BMS' && type !== 'Стійка') return true;
-        return consumedIndices.has(i);
-      });
-
-      if (finalRows.length !== nextRows.length) {
-        nextRows = finalRows;
-        changed = true;
-      }
-
-      if (!changed) return prev;
-      return { ...prev, "Основне обладнання": nextRows };
-    });
-  }, [hvBatterySnapshot]);
-
   const victronSnapshot = useMemo(() => {
     const mainItems = equipmentGroups["Основне обладнання"] || [];
     return mainItems
@@ -2557,7 +2456,7 @@ function App() {
     const groupTotalsUah = {};
     const groupCostTotalsUsd = {};
 
-    Object.keys(equipmentGroups).forEach(groupKey => {
+    Object.keys(orderEquipmentGroups(equipmentGroups)).forEach(groupKey => {
       let groupSumUsd = 0;
       let groupSumUah = 0;
       let groupCostSumUsd = 0;
@@ -5060,7 +4959,7 @@ function App() {
                   {(() => {
                      const rows = [];
 
-                     Object.keys(calculations.groups).forEach((gk) => {
+                     Object.keys(orderEquipmentGroups(calculations.groups)).forEach((gk) => {
                         (calculations.groups[gk] || []).forEach((it) => {
                            if (toNumber(it.sumUsd, 0) === 0 && toNumber(it.sumUah, 0) === 0) return;
                            const qty = toNumber(it.quantity, 0);
