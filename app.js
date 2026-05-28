@@ -5090,7 +5090,7 @@ function App() {
                            const unitPriceUsd = qty > 0 ? toNumber(it.sumUsd, 0) / qty : 0;
                            rows.push({
                               key: `g-${gk}-${it.id}`,
-                              name: (it.type ? it.type + " " : "") + it.name,
+                              name: it.name,
                               unit: it.unit,
                               qty: it.quantity,
                               unitPriceUsd: toNumber(it.priceNormalizedUsd, unitPriceUsd),
