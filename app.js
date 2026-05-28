@@ -34,6 +34,11 @@ const VAT_RECALC_SCOPES = {
   main_only: "Тільки Основне обладнання",
   goods_and_works: "Всі товари + роботи"
 };
+const DISCOUNT_SCOPES = {
+  full: "Весь чек",
+  goods: "Тільки товар",
+  works: "Тільки роботи"
+};
 const PV_TEMPLATE_TYPES = ["Стандарт", "Victron", "Інше"];
 const MOUNTING_TEMPLATE_TYPES = [
   "Похилий дах",
@@ -504,6 +509,7 @@ function App() {
   const [installPercent, setInstallPercent] = useState(() => getSaved('solar_installPercent', 15));
   const [managerCommissionRate, setManagerCommissionRate] = useState(() => getSaved('solar_managerCommissionRate', 10));
   const [clientDiscountPercent, setClientDiscountPercent] = useState(() => getSaved('solar_clientDiscountPercent', 0));
+  const [clientDiscountScope, setClientDiscountScope] = useState(() => getSaved('solar_clientDiscountScope', 'full'));
   const [taxMode, setTaxMode] = useState(() => getSaved('solar_taxMode', 'none'));
   const [fopTaxPercent, setFopTaxPercent] = useState(() => getSaved('solar_fopTaxPercent', 7));
   const [advancedFopPercent, setAdvancedFopPercent] = useState(() => getSaved('solar_advancedFopPercent', 7));
@@ -1169,6 +1175,7 @@ function App() {
     installPercent,
     managerCommissionRate,
     clientDiscountPercent,
+    clientDiscountScope,
     taxMode,
     fopTaxPercent,
     advancedFopPercent,
@@ -1232,6 +1239,7 @@ function App() {
     setInstallPercent(data.installPercent ?? 15);
     setManagerCommissionRate(data.managerCommissionRate ?? 10);
     setClientDiscountPercent(data.clientDiscountPercent ?? 0);
+    setClientDiscountScope(data.clientDiscountScope || 'full');
     setTaxMode(data.taxMode || 'none');
     setFopTaxPercent(data.fopTaxPercent ?? 7);
     setAdvancedFopPercent(data.advancedFopPercent ?? 7);
@@ -1280,6 +1288,7 @@ function App() {
     setClientInfo(data.clientInfo && typeof data.clientInfo === 'object' ? data.clientInfo : DEFAULT_CLIENT_INFO);
     setManagerCommissionRate(data.managerCommissionRate ?? 10);
     setClientDiscountPercent(data.clientDiscountPercent ?? 0);
+    setClientDiscountScope(data.clientDiscountScope || 'full');
     setTaxMode(data.taxMode || 'none');
     setModulePower(data.modulePower ?? 550);
     setGroupSettings(data.groupSettings && typeof data.groupSettings === 'object' ? migrateProtectionDisplayNames(data.groupSettings) : createDefaultGroupSettings());
@@ -1330,6 +1339,7 @@ function App() {
     );
     setInstallPercent(data.installPercent ?? 15);
     setClientDiscountPercent(data.clientDiscountPercent ?? 0);
+    setClientDiscountScope(data.clientDiscountScope || 'full');
     setTaxMode(data.taxMode || 'none');
     setGroupSettings(data.groupSettings && typeof data.groupSettings === 'object' ? migrateProtectionDisplayNames(data.groupSettings) : createDefaultGroupSettings());
     if (typeof data.autoMountingQuantity === 'boolean') {
@@ -1395,6 +1405,7 @@ function App() {
         installPercent,
         managerCommissionRate,
         clientDiscountPercent,
+        clientDiscountScope,
         taxMode,
         groupSettings,
         autoMountingQuantity,
@@ -1472,6 +1483,7 @@ function App() {
         otherExpenses,
         installPercent,
         clientDiscountPercent,
+        clientDiscountScope,
         taxMode,
         groupSettings,
         autoMountingQuantity
@@ -1518,6 +1530,7 @@ function App() {
         otherExpenses,
         installPercent,
         clientDiscountPercent,
+        clientDiscountScope,
         taxMode,
         groupSettings,
         autoMountingQuantity
@@ -2409,6 +2422,7 @@ function App() {
   useEffect(() => { localStorage.setItem('solar_installPercent', JSON.stringify(installPercent)); }, [installPercent]);
   useEffect(() => { localStorage.setItem('solar_managerCommissionRate', JSON.stringify(managerCommissionRate)); }, [managerCommissionRate]);
   useEffect(() => { localStorage.setItem('solar_clientDiscountPercent', JSON.stringify(clientDiscountPercent)); }, [clientDiscountPercent]);
+  useEffect(() => { localStorage.setItem('solar_clientDiscountScope', JSON.stringify(clientDiscountScope)); }, [clientDiscountScope]);
   useEffect(() => { localStorage.setItem('solar_taxMode', JSON.stringify(taxMode)); }, [taxMode]);
   useEffect(() => { localStorage.setItem('solar_fopTaxPercent', JSON.stringify(fopTaxPercent)); }, [fopTaxPercent]);
   useEffect(() => { localStorage.setItem('solar_advancedFopPercent', JSON.stringify(advancedFopPercent)); }, [advancedFopPercent]);
@@ -2603,7 +2617,12 @@ function App() {
     
     const finalTotalUsd = totals.sumUsd + installationTotalUsd + logisticsTotalUsd;
     const discountPercent = Math.max(0, toNumber(clientDiscountPercent, 0));
-    const discountUsd = finalTotalUsd * (discountPercent / 100);
+    const discountScope = DISCOUNT_SCOPES[clientDiscountScope] ? clientDiscountScope : 'full';
+    const discountBaseUsd =
+      discountScope === 'goods' ? totals.sumUsd :
+      discountScope === 'works' ? installationTotalUsd :
+      finalTotalUsd;
+    const discountUsd = discountBaseUsd * (discountPercent / 100);
     const finalTotalWithDiscountUsd = Math.max(0, finalTotalUsd - discountUsd);
     const finalTotalUah = finalTotalUsd * safeUsdRate;
     const finalTotalEur = eurUsdRate > 0 ? (finalTotalUsd / eurUsdRate) : 0;
@@ -2617,14 +2636,22 @@ function App() {
     const marginMaterialsPercent = totals.sumUsd > 0 ? (marginMaterialsUsd / totals.sumUsd) * 100 : 0;
     const marginWorksPercent = workItemsSumUsd > 0 ? (marginWorksUsd / workItemsSumUsd) * 100 : 0;
     const marginFromOrderPercent = finalTotalWithDiscountUsd > 0 ? (marginTotalUsd / finalTotalWithDiscountUsd) * 100 : 0;
+    const materialsWithDiscountUsd =
+      discountScope === 'goods'
+        ? Math.max(0, totals.sumUsd - discountUsd)
+        : totals.sumUsd;
+    const worksWithDiscountUsd =
+      discountScope === 'works'
+        ? Math.max(0, installationTotalUsd - discountUsd)
+        : installationTotalUsd;
+    const logisticsWithDiscountUsd = logisticsTotalUsd;
+    const goodsDiscountUsd = Math.max(0, totals.sumUsd - materialsWithDiscountUsd);
+    const worksDiscountUsd = Math.max(0, installationTotalUsd - worksWithDiscountUsd);
     // Маржа для виплат менеджеру/чистого прибутку — вже з урахуванням клієнтської знижки
-    const grossMarginBeforeTaxesUsd = marginTotalUsd - discountUsd;
+    const grossMarginBeforeTaxesUsd = marginTotalUsd - (goodsDiscountUsd + worksDiscountUsd);
     // Комісія менеджера (до податків) — від маржі замовлення після знижки
     const managerCommissionBeforeTaxesUsd = Math.max(0, grossMarginBeforeTaxesUsd) * (toNumber(managerCommissionRate, 0) / 100);
     const netMarginBeforeTaxesUsd = grossMarginBeforeTaxesUsd - managerCommissionBeforeTaxesUsd;
-    const materialsWithDiscountUsd = Math.max(0, totals.sumUsd - (discountUsd * (totals.sumUsd / (finalTotalUsd || 1))));
-    const worksWithDiscountUsd = Math.max(0, installationTotalUsd - (discountUsd * (installationTotalUsd / (finalTotalUsd || 1))));
-    const logisticsWithDiscountUsd = Math.max(0, logisticsTotalUsd - (discountUsd * (logisticsTotalUsd / (finalTotalUsd || 1))));
     let taxesUsd = 0;
     let vatGoodsUsd = 0;
     let vatWorksUsd = 0;
@@ -2744,6 +2771,7 @@ function App() {
         netMarginUah,
         discountPercent,
         discountUsd,
+        discountScope,
         finalTotalUsd,
         finalTotalUah,
         finalTotalEur,
@@ -2761,6 +2789,7 @@ function App() {
     otherExpenses,
     managerCommissionRate,
     clientDiscountPercent,
+    clientDiscountScope,
     groupSettings,
     taxMode,
     fopTaxPercent,
@@ -2799,6 +2828,7 @@ function App() {
     installPercent,
     managerCommissionRate,
     clientDiscountPercent,
+    clientDiscountScope,
     taxMode,
     fopTaxPercent,
     advancedFopPercent,
@@ -4662,6 +4692,14 @@ function App() {
             <div className="input-group" style={{marginBottom: '1rem'}}>
               <label>Знижка клієнту (%)</label>
               <input type="number" value={clientDiscountPercent} onChange={(e) => setClientDiscountPercent(parseNumberInput(e.target.value))} />
+            </div>
+            <div className="input-group" style={{marginBottom: '1rem'}}>
+              <label>Застосувати знижку до</label>
+              <select value={clientDiscountScope} onChange={(e) => setClientDiscountScope(e.target.value)}>
+                {Object.entries(DISCOUNT_SCOPES).map(([key, label]) => (
+                  <option key={key} value={key}>{label}</option>
+                ))}
+              </select>
             </div>
             {!clientMode && <div className="input-group" style={{marginBottom: '1rem'}}>
               <label>Податковий режим</label>
