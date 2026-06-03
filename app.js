@@ -1187,6 +1187,9 @@ function App() {
     lockedDistributedTaxUsd,
     taxDistributionApplied,
     taxDistributionScope,
+    vatRecalcScope,
+    vatRecalcApplied,
+    vatRecalcBackup,
     installPercentTaxUsd,
     autoInstallPercentEnabled,
     calculationsSnapshot: calculations,
@@ -1251,6 +1254,9 @@ function App() {
     setLockedDistributedTaxUsd(data.lockedDistributedTaxUsd ?? null);
     setTaxDistributionApplied(Boolean(data.taxDistributionApplied));
     setTaxDistributionScope(data.taxDistributionScope || 'nonMainGoods');
+    setVatRecalcScope(data.vatRecalcScope || 'goods_all');
+    setVatRecalcApplied(Boolean(data.vatRecalcApplied));
+    setVatRecalcBackup(data.vatRecalcBackup && typeof data.vatRecalcBackup === 'object' ? data.vatRecalcBackup : null);
     setInstallPercentTaxUsd(data.installPercentTaxUsd ?? 0);
     setAutoInstallPercentEnabled(typeof data.autoInstallPercentEnabled === 'boolean' ? data.autoInstallPercentEnabled : true);
     setGroupSettings(data.groupSettings && typeof data.groupSettings === 'object' ? migrateProtectionDisplayNames(data.groupSettings) : createDefaultGroupSettings());
@@ -1290,6 +1296,9 @@ function App() {
     setClientDiscountPercent(data.clientDiscountPercent ?? 0);
     setClientDiscountScope(data.clientDiscountScope || 'full');
     setTaxMode(data.taxMode || 'none');
+    setVatRecalcScope(data.vatRecalcScope || 'goods_all');
+    setVatRecalcApplied(Boolean(data.vatRecalcApplied));
+    setVatRecalcBackup(data.vatRecalcBackup && typeof data.vatRecalcBackup === 'object' ? data.vatRecalcBackup : null);
     setModulePower(data.modulePower ?? 550);
     setGroupSettings(data.groupSettings && typeof data.groupSettings === 'object' ? migrateProtectionDisplayNames(data.groupSettings) : createDefaultGroupSettings());
     setProjectType(project.type || 'commercial');
@@ -1341,6 +1350,9 @@ function App() {
     setClientDiscountPercent(data.clientDiscountPercent ?? 0);
     setClientDiscountScope(data.clientDiscountScope || 'full');
     setTaxMode(data.taxMode || 'none');
+    setVatRecalcScope('goods_all');
+    setVatRecalcApplied(false);
+    setVatRecalcBackup(null);
     setGroupSettings(data.groupSettings && typeof data.groupSettings === 'object' ? migrateProtectionDisplayNames(data.groupSettings) : createDefaultGroupSettings());
     if (typeof data.autoMountingQuantity === 'boolean') {
       setAutoMountingQuantity(data.autoMountingQuantity);
@@ -1407,6 +1419,9 @@ function App() {
         clientDiscountPercent,
         clientDiscountScope,
         taxMode,
+        vatRecalcScope,
+        vatRecalcApplied,
+        vatRecalcBackup,
         groupSettings,
         autoMountingQuantity,
         projectFolderName: computedFolder,
@@ -1590,6 +1605,9 @@ function App() {
     setClientDiscountPercent(0);
     setTaxMode('none');
     setFopTaxPercent(7);
+    setVatRecalcScope('goods_all');
+    setVatRecalcApplied(false);
+    setVatRecalcBackup(null);
     setGenerationLocation('Миколаїв');
     setGenerationMountType('roof');
     setAutoMountingQuantity(true);
@@ -2840,6 +2858,9 @@ function App() {
     lockedDistributedTaxUsd,
     taxDistributionApplied,
     taxDistributionScope,
+    vatRecalcScope,
+    vatRecalcApplied,
+    vatRecalcBackup,
     installPercentTaxUsd,
     autoInstallPercentEnabled,
     groupSettings,
@@ -3317,12 +3338,37 @@ function App() {
       return;
     }
     const vatFactor = 1.2;
+    const currentSheetId = String(activeOfferSheetId || '');
     const shouldApplyToGroup = (groupKey) => {
       if (vatRecalcScope === 'main_only') return groupKey === 'Основне обладнання';
       return true;
     };
+    const eligibleGoodsCount = Object.keys(equipmentGroups || {}).reduce((acc, groupKey) => {
+      if (!shouldApplyToGroup(groupKey)) return acc;
+      const rows = Array.isArray(equipmentGroups[groupKey]) ? equipmentGroups[groupKey] : [];
+      const rowCount = rows.filter((item) => toNumber(item.incomingPrice, 0) > 0).length;
+      const fixedCount = toNumber(groupSettings?.[groupKey]?.incomingPrice, 0) > 0 ? 1 : 0;
+      return acc + rowCount + fixedCount;
+    }, 0);
+    const eligibleWorksCount = vatRecalcScope === 'goods_and_works'
+      ? (workItems || []).filter((item) => toNumber(item.incomingPrice, 0) > 0).length
+      : 0;
+    if (eligibleGoodsCount + eligibleWorksCount <= 0) {
+      alert('У вибраній області немає позицій із собівартістю для перерахунку ПДВ.');
+      return;
+    }
+    const recalcItem = (item) => {
+      const incoming = Math.max(0, toNumber(item.incomingPrice, 0));
+      if (incoming <= 0) return item;
+      const markup = toNumber(item.markupPercent, 0);
+      const nextIncoming = incoming * vatFactor;
+      const nextPrice = nextIncoming * (1 + markup / 100);
+      return { ...item, incomingPrice: nextIncoming, price: nextPrice };
+    };
 
     setVatRecalcBackup({
+      activeOfferSheetId: currentSheetId,
+      scope: vatRecalcScope,
       equipmentGroups: JSON.parse(JSON.stringify(equipmentGroups || {})),
       groupSettings: JSON.parse(JSON.stringify(groupSettings || {})),
       workItems: JSON.parse(JSON.stringify(workItems || []))
@@ -3332,13 +3378,7 @@ function App() {
       const next = { ...prev };
       Object.keys(next).forEach((groupKey) => {
         if (!shouldApplyToGroup(groupKey)) return;
-        next[groupKey] = (next[groupKey] || []).map((item) => {
-          const incoming = Math.max(0, toNumber(item.incomingPrice, 0));
-          const markup = toNumber(item.markupPercent, 0);
-          const nextIncoming = incoming * vatFactor;
-          const nextPrice = nextIncoming * (1 + markup / 100);
-          return { ...item, incomingPrice: nextIncoming, price: nextPrice };
-        });
+        next[groupKey] = (next[groupKey] || []).map(recalcItem);
       });
       return next;
     });
@@ -3349,6 +3389,7 @@ function App() {
         if (!shouldApplyToGroup(groupKey)) return;
         const settings = next[groupKey] || {};
         const incoming = Math.max(0, toNumber(settings.incomingPrice, 0));
+        if (incoming <= 0) return;
         const markup = toNumber(settings.markupPercent, 0);
         const nextIncoming = incoming * vatFactor;
         const nextPrice = nextIncoming * (1 + markup / 100);
@@ -3358,13 +3399,7 @@ function App() {
     });
 
     if (vatRecalcScope === 'goods_and_works') {
-      setWorkItems((prev) => (prev || []).map((it) => {
-        const incoming = Math.max(0, toNumber(it.incomingPrice, 0));
-        const markup = toNumber(it.markupPercent, 0);
-        const nextIncoming = incoming * vatFactor;
-        const nextPrice = nextIncoming * (1 + markup / 100);
-        return { ...it, incomingPrice: nextIncoming, price: nextPrice };
-      }));
+      setWorkItems((prev) => (prev || []).map(recalcItem));
     }
     setVatRecalcApplied(true);
 
@@ -3374,6 +3409,11 @@ function App() {
   const rollbackVatRecalc = () => {
     if (!vatRecalcApplied || !vatRecalcBackup) {
       alert('Немає застосованого перерахунку ПДВ для відміни.');
+      return;
+    }
+    const currentSheetId = String(activeOfferSheetId || '');
+    if (vatRecalcBackup.activeOfferSheetId && String(vatRecalcBackup.activeOfferSheetId) !== currentSheetId) {
+      alert('Цей backup ПДВ належить іншому КП. Перейдіть на те КП або відкрийте проєкт заново.');
       return;
     }
     setEquipmentGroups(JSON.parse(JSON.stringify(vatRecalcBackup.equipmentGroups || {})));
@@ -4846,16 +4886,16 @@ function App() {
                 <div style={{fontWeight: 700, marginBottom: '0.5rem'}}>Перерахунок цін з ПДВ (+20% до собівартості)</div>
                 <div className="input-group" style={{marginBottom: '0.5rem'}}>
                   <label>Для яких категорій</label>
-                  <select value={vatRecalcScope} onChange={(e) => setVatRecalcScope(e.target.value)}>
+                  <select value={vatRecalcScope} onChange={(e) => setVatRecalcScope(e.target.value)} disabled={vatRecalcApplied}>
                     {Object.entries(VAT_RECALC_SCOPES).map(([key, label]) => (
                       <option key={key} value={key}>{label}</option>
                     ))}
                   </select>
                 </div>
-                <button type="button" className="secondary" style={{background: '#166534'}} onClick={applyVatRecalc}>
+                <button type="button" className="secondary" style={{background: vatRecalcApplied ? '#475569' : '#166534'}} onClick={applyVatRecalc} disabled={vatRecalcApplied}>
                   Застосувати перерахунок ПДВ
                 </button>
-                <button type="button" className="secondary" style={{background: '#475569', marginLeft: '0.5rem'}} onClick={rollbackVatRecalc}>
+                <button type="button" className="secondary" style={{background: '#475569', marginLeft: '0.5rem'}} onClick={rollbackVatRecalc} disabled={!vatRecalcApplied}>
                   Відмінити перерахунок ПДВ
                 </button>
               </div>
