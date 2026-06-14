@@ -32,6 +32,7 @@ const TAX_DISTRIBUTION_SCOPES = {
 const VAT_RECALC_SCOPES = {
   goods_all: "Весь товар",
   main_only: "Тільки Основне обладнання",
+  works_only: "Тільки роботи",
   goods_and_works: "Всі товари + роботи"
 };
 const DISCOUNT_SCOPES = {
@@ -3340,6 +3341,7 @@ function App() {
     const vatFactor = 1.2;
     const currentSheetId = String(activeOfferSheetId || '');
     const shouldApplyToGroup = (groupKey) => {
+      if (vatRecalcScope === 'works_only') return false;
       if (vatRecalcScope === 'main_only') return groupKey === 'Основне обладнання';
       return true;
     };
@@ -3350,7 +3352,7 @@ function App() {
       const fixedCount = toNumber(groupSettings?.[groupKey]?.incomingPrice, 0) > 0 ? 1 : 0;
       return acc + rowCount + fixedCount;
     }, 0);
-    const eligibleWorksCount = vatRecalcScope === 'goods_and_works'
+    const eligibleWorksCount = (vatRecalcScope === 'goods_and_works' || vatRecalcScope === 'works_only')
       ? (workItems || []).filter((item) => toNumber(item.incomingPrice, 0) > 0).length
       : 0;
     if (eligibleGoodsCount + eligibleWorksCount <= 0) {
@@ -3398,7 +3400,7 @@ function App() {
       return next;
     });
 
-    if (vatRecalcScope === 'goods_and_works') {
+    if (vatRecalcScope === 'goods_and_works' || vatRecalcScope === 'works_only') {
       setWorkItems((prev) => (prev || []).map(recalcItem));
     }
     setVatRecalcApplied(true);
