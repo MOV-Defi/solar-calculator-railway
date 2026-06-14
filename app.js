@@ -40,6 +40,20 @@ const DISCOUNT_SCOPES = {
   goods: "Тільки товар",
   works: "Тільки роботи"
 };
+const DEFAULT_OFFER_TECH_OVERRIDES = {
+  systemType: "",
+  solarPower: "",
+  inverterPower: "",
+  batteryCapacity: "",
+  annualGeneration: ""
+};
+const DEFAULT_OFFER_WARRANTY_OVERRIDES = {
+  solarModules: "",
+  inverter: "",
+  batteries: "",
+  installation: "",
+  support: ""
+};
 const PV_TEMPLATE_TYPES = ["Стандарт", "Victron", "Інше"];
 const MOUNTING_TEMPLATE_TYPES = [
   "Похилий дах",
@@ -691,6 +705,14 @@ function App() {
   const [includeAddressInOffer, setIncludeAddressInOffer] = useState(() => getSaved('solar_includeAddressInOffer', true));
   const [showObjectTypeOnCover, setShowObjectTypeOnCover] = useState(() => getSaved('solar_showObjectTypeOnCover', false));
   const [printCurrencyMode, setPrintCurrencyMode] = useState(() => getSaved('solar_printCurrencyMode', 'both')); // both | usd | uah
+  const [offerTechOverrides, setOfferTechOverrides] = useState(() => ({
+    ...DEFAULT_OFFER_TECH_OVERRIDES,
+    ...(getSaved('solar_offerTechOverrides', {}) || {})
+  }));
+  const [offerWarrantyOverrides, setOfferWarrantyOverrides] = useState(() => ({
+    ...DEFAULT_OFFER_WARRANTY_OVERRIDES,
+    ...(getSaved('solar_offerWarrantyOverrides', {}) || {})
+  }));
   const [offerAppendPdfFiles, setOfferAppendPdfFiles] = useState([]);
   const offerAppendPdfInputRef = useRef(null);
   const [activeDropdown, setActiveDropdown] = useState(null);
@@ -1163,6 +1185,8 @@ function App() {
     coverSystemName,
     coverPageType,
     showOfferStationSheet,
+    offerTechOverrides,
+    offerWarrantyOverrides,
     generationLocation,
     generationMountType,
     energyTariffUah,
@@ -1226,6 +1250,8 @@ function App() {
     setCoverSystemName(typeof data.coverSystemName === 'string' ? data.coverSystemName : DEFAULT_COVER_SYSTEM_NAME);
     setCoverPageType(typeof data.coverPageType === 'string' ? data.coverPageType : COVER_PAGE_TYPES[0]);
     setShowOfferStationSheet(typeof data.showOfferStationSheet === 'boolean' ? data.showOfferStationSheet : false);
+    setOfferTechOverrides({ ...DEFAULT_OFFER_TECH_OVERRIDES, ...(data.offerTechOverrides && typeof data.offerTechOverrides === 'object' ? data.offerTechOverrides : {}) });
+    setOfferWarrantyOverrides({ ...DEFAULT_OFFER_WARRANTY_OVERRIDES, ...(data.offerWarrantyOverrides && typeof data.offerWarrantyOverrides === 'object' ? data.offerWarrantyOverrides : {}) });
     setGenerationLocation(typeof data.generationLocation === 'string' ? data.generationLocation : 'Миколаїв');
     setGenerationMountType(typeof data.generationMountType === 'string' ? data.generationMountType : 'roof');
     setEnergyTariffUah(data.energyTariffUah ?? 4.32);
@@ -1279,6 +1305,8 @@ function App() {
     setCoverSystemName(typeof data.coverSystemName === 'string' ? data.coverSystemName : DEFAULT_COVER_SYSTEM_NAME);
     setCoverPageType(typeof data.coverPageType === 'string' ? data.coverPageType : COVER_PAGE_TYPES[0]);
     setShowOfferStationSheet(typeof data.showOfferStationSheet === 'boolean' ? data.showOfferStationSheet : false);
+    setOfferTechOverrides({ ...DEFAULT_OFFER_TECH_OVERRIDES, ...(data.offerTechOverrides && typeof data.offerTechOverrides === 'object' ? data.offerTechOverrides : {}) });
+    setOfferWarrantyOverrides({ ...DEFAULT_OFFER_WARRANTY_OVERRIDES, ...(data.offerWarrantyOverrides && typeof data.offerWarrantyOverrides === 'object' ? data.offerWarrantyOverrides : {}) });
     setGenerationLocation(typeof data.generationLocation === 'string' ? data.generationLocation : 'Миколаїв');
     setGenerationMountType(typeof data.generationMountType === 'string' ? data.generationMountType : 'roof');
     setEnergyTariffUah(data.energyTariffUah ?? 4.32);
@@ -1336,6 +1364,8 @@ function App() {
     setCoverSystemName(typeof data.coverSystemName === 'string' ? data.coverSystemName : DEFAULT_COVER_SYSTEM_NAME);
     setCoverPageType(typeof data.coverPageType === 'string' ? data.coverPageType : COVER_PAGE_TYPES[0]);
     setShowOfferStationSheet(typeof data.showOfferStationSheet === 'boolean' ? data.showOfferStationSheet : false);
+    setOfferTechOverrides({ ...DEFAULT_OFFER_TECH_OVERRIDES, ...(data.offerTechOverrides && typeof data.offerTechOverrides === 'object' ? data.offerTechOverrides : {}) });
+    setOfferWarrantyOverrides({ ...DEFAULT_OFFER_WARRANTY_OVERRIDES, ...(data.offerWarrantyOverrides && typeof data.offerWarrantyOverrides === 'object' ? data.offerWarrantyOverrides : {}) });
     setGenerationLocation(typeof data.generationLocation === 'string' ? data.generationLocation : 'Миколаїв');
     setGenerationMountType(typeof data.generationMountType === 'string' ? data.generationMountType : 'roof');
     setEnergyTariffUah(data.energyTariffUah ?? 4.32);
@@ -1405,6 +1435,8 @@ function App() {
         coverSystemName,
         coverPageType,
         showOfferStationSheet,
+        offerTechOverrides,
+        offerWarrantyOverrides,
         generationLocation,
         generationMountType,
         energyTariffUah,
@@ -1488,6 +1520,8 @@ function App() {
         coverSystemName,
         coverPageType,
         showOfferStationSheet,
+        offerTechOverrides,
+        offerWarrantyOverrides,
         generationLocation,
         generationMountType,
         energyTariffUah,
@@ -1535,6 +1569,8 @@ function App() {
         coverSystemName,
         coverPageType,
         showOfferStationSheet,
+        offerTechOverrides,
+        offerWarrantyOverrides,
         generationLocation,
         generationMountType,
         energyTariffUah,
@@ -1611,6 +1647,8 @@ function App() {
     setVatRecalcBackup(null);
     setGenerationLocation('Миколаїв');
     setGenerationMountType('roof');
+    setOfferTechOverrides({ ...DEFAULT_OFFER_TECH_OVERRIDES });
+    setOfferWarrantyOverrides({ ...DEFAULT_OFFER_WARRANTY_OVERRIDES });
     setAutoMountingQuantity(true);
     setEquipmentGroups(nextEquipmentGroups);
     setGroupSettings(nextGroupSettings);
@@ -2434,6 +2472,8 @@ function App() {
   useEffect(() => { localStorage.setItem('solar_includeAddressInOffer', JSON.stringify(includeAddressInOffer)); }, [includeAddressInOffer]);
   useEffect(() => { localStorage.setItem('solar_showObjectTypeOnCover', JSON.stringify(showObjectTypeOnCover)); }, [showObjectTypeOnCover]);
   useEffect(() => { localStorage.setItem('solar_printCurrencyMode', JSON.stringify(printCurrencyMode)); }, [printCurrencyMode]);
+  useEffect(() => { localStorage.setItem('solar_offerTechOverrides', JSON.stringify(offerTechOverrides)); }, [offerTechOverrides]);
+  useEffect(() => { localStorage.setItem('solar_offerWarrantyOverrides', JSON.stringify(offerWarrantyOverrides)); }, [offerWarrantyOverrides]);
   useEffect(() => { localStorage.setItem('solar_selectedManagerId', JSON.stringify(selectedManagerId)); }, [selectedManagerId]);
   useEffect(() => { localStorage.setItem('solar_equipmentGroups', JSON.stringify(equipmentGroups)); }, [equipmentGroups]);
   useEffect(() => { localStorage.setItem('solar_otherExpenses', JSON.stringify(otherExpenses)); }, [otherExpenses]);
@@ -3056,6 +3096,24 @@ function App() {
     0,
     Math.round(stationPowerKw * toNumber(selectedGenerationProfile.annualYieldKwhPerKw, 1300) * toNumber(selectedMountConfig.multiplier, 1))
   );
+  const manualText = (value, fallback) => {
+    const text = String(value ?? '').trim();
+    return text || fallback;
+  };
+  const offerTechDisplay = {
+    systemType: manualText(offerTechOverrides.systemType, coverSystemNameFinal),
+    solarPower: manualText(offerTechOverrides.solarPower, `${formatKw(toNumber(calculations.stationPowerW, 0) / 1000)} кВт`),
+    inverterPower: manualText(offerTechOverrides.inverterPower, `${formatKw(inverterPowerKw)} кВт`),
+    batteryCapacity: manualText(offerTechOverrides.batteryCapacity, `${formatKw(batteryKwh)} кВт·год`),
+    annualGeneration: manualText(offerTechOverrides.annualGeneration, `${formatMoney(annualGenerationKwh).replace(',00', '')} кВт·год`)
+  };
+  const offerWarrantyDisplay = {
+    solarModules: manualText(offerWarrantyOverrides.solarModules, 'до 15 років'),
+    inverter: manualText(offerWarrantyOverrides.inverter, 'до 5 років'),
+    batteries: manualText(offerWarrantyOverrides.batteries, 'до 10 років'),
+    installation: manualText(offerWarrantyOverrides.installation, '12 місяців'),
+    support: manualText(offerWarrantyOverrides.support, 'консультація та супровід')
+  };
   const monthLabels = ['Січ', 'Лют', 'Бер', 'Кві', 'Тра', 'Чер', 'Лип', 'Сер', 'Вер', 'Жов', 'Лис', 'Гру'];
   const monthFactors = Array.isArray(selectedGenerationProfile.monthFactors)
     ? selectedGenerationProfile.monthFactors
@@ -3713,6 +3771,26 @@ function App() {
         <div className="input-group" style={{margin: 0}}>
           <label>Типове навантаження, кВт</label>
           <input type="number" step="0.1" value={typicalLoadKw} onChange={(e) => setTypicalLoadKw(parseNumberInput(e.target.value))} />
+        </div>
+        <div className="input-group" style={{margin: 0, gridColumn: '1 / span 2'}}>
+          <label>Параметри КП вручну (пусто = авто)</label>
+          <div style={{display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '0.35rem'}}>
+            <input type="text" value={offerTechOverrides.systemType || ''} onChange={(e) => setOfferTechOverrides(prev => ({...prev, systemType: e.target.value}))} placeholder="Тип системи" />
+            <input type="text" value={offerTechOverrides.solarPower || ''} onChange={(e) => setOfferTechOverrides(prev => ({...prev, solarPower: e.target.value}))} placeholder="Потужність сонячного поля" />
+            <input type="text" value={offerTechOverrides.inverterPower || ''} onChange={(e) => setOfferTechOverrides(prev => ({...prev, inverterPower: e.target.value}))} placeholder="Потужність інвертора" />
+            <input type="text" value={offerTechOverrides.batteryCapacity || ''} onChange={(e) => setOfferTechOverrides(prev => ({...prev, batteryCapacity: e.target.value}))} placeholder="Ємність АКБ" />
+            <input type="text" value={offerTechOverrides.annualGeneration || ''} onChange={(e) => setOfferTechOverrides(prev => ({...prev, annualGeneration: e.target.value}))} placeholder="Прогноз генерації/рік" style={{gridColumn: '1 / span 2'}} />
+          </div>
+        </div>
+        <div className="input-group" style={{margin: 0, gridColumn: '3 / span 2'}}>
+          <label>Гарантії КП вручну (пусто = стандарт)</label>
+          <div style={{display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '0.35rem'}}>
+            <input type="text" value={offerWarrantyOverrides.solarModules || ''} onChange={(e) => setOfferWarrantyOverrides(prev => ({...prev, solarModules: e.target.value}))} placeholder="Сонячні модулі" />
+            <input type="text" value={offerWarrantyOverrides.inverter || ''} onChange={(e) => setOfferWarrantyOverrides(prev => ({...prev, inverter: e.target.value}))} placeholder="Інвертор" />
+            <input type="text" value={offerWarrantyOverrides.batteries || ''} onChange={(e) => setOfferWarrantyOverrides(prev => ({...prev, batteries: e.target.value}))} placeholder="Акумуляторні системи" />
+            <input type="text" value={offerWarrantyOverrides.installation || ''} onChange={(e) => setOfferWarrantyOverrides(prev => ({...prev, installation: e.target.value}))} placeholder="Монтажні роботи" />
+            <input type="text" value={offerWarrantyOverrides.support || ''} onChange={(e) => setOfferWarrantyOverrides(prev => ({...prev, support: e.target.value}))} placeholder="Сервісна підтримка" style={{gridColumn: '1 / span 2'}} />
+          </div>
         </div>
         <div className="input-group" style={{margin: 0}}>
           <label>QR посилання (сайт/менеджер)</label>
@@ -5078,21 +5156,21 @@ function App() {
                 <div className="offer-top-card">
                   <h3>Технічні параметри</h3>
                   <div className="offer-station-list">
-                    <div><span>Тип системи:</span><strong>{coverSystemNameFinal}</strong></div>
-                    <div><span>Потужність сонячного поля:</span><strong>{formatKw(toNumber(calculations.stationPowerW, 0) / 1000)} кВт</strong></div>
-                    <div><span>Потужність інвертора:</span><strong>{formatKw(inverterPowerKw)} кВт</strong></div>
-                    <div><span>Ємність АКБ:</span><strong>{formatKw(batteryKwh)} кВт·год</strong></div>
-                    {hasSolar && <div><span>Прогноз генерації/рік:</span><strong>{formatMoney(annualGenerationKwh).replace(',00', '')} кВт·год</strong></div>}
+                    <div><span>Тип системи:</span><strong>{offerTechDisplay.systemType}</strong></div>
+                    <div><span>Потужність сонячного поля:</span><strong>{offerTechDisplay.solarPower}</strong></div>
+                    <div><span>Потужність інвертора:</span><strong>{offerTechDisplay.inverterPower}</strong></div>
+                    <div><span>Ємність АКБ:</span><strong>{offerTechDisplay.batteryCapacity}</strong></div>
+                    {(hasSolar || String(offerTechOverrides.annualGeneration || '').trim()) && <div><span>Прогноз генерації/рік:</span><strong>{offerTechDisplay.annualGeneration}</strong></div>}
                   </div>
                 </div>
                 <div className="offer-top-card">
                   <h3>Гарантії та сервіс</h3>
                   <div className="offer-station-list">
-                    <div><span>Сонячні модулі:</span><strong>до 15 років</strong></div>
-                    <div><span>Інвертор:</span><strong>до 5 років</strong></div>
-                    <div><span>Акумуляторні системи:</span><strong>до 10 років</strong></div>
-                    <div><span>Монтажні роботи:</span><strong>12 місяців</strong></div>
-                    <div><span>Сервісна підтримка:</span><strong>консультація та супровід</strong></div>
+                    <div><span>Сонячні модулі:</span><strong>{offerWarrantyDisplay.solarModules}</strong></div>
+                    <div><span>Інвертор:</span><strong>{offerWarrantyDisplay.inverter}</strong></div>
+                    <div><span>Акумуляторні системи:</span><strong>{offerWarrantyDisplay.batteries}</strong></div>
+                    <div><span>Монтажні роботи:</span><strong>{offerWarrantyDisplay.installation}</strong></div>
+                    <div><span>Сервісна підтримка:</span><strong>{offerWarrantyDisplay.support}</strong></div>
                   </div>
                 </div>
               </div>
