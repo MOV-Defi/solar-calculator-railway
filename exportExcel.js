@@ -101,7 +101,7 @@ const writeRow = ({ sheet, rowNumber, isOffer, name, unit, qty, priceUsd, totalU
   row.getCell(2).value = unit;
   row.getCell(3).value = qty;
   row.getCell(4).value = isOffer
-    ? { formula: `IF(H${r}>0;H${r}*(1+I${r}/100);${toNumber(priceUsd, 0)})`, result: toNumber(priceUsd, 0) }
+    ? { formula: `IF(H${r}>0,H${r}*(1+I${r}/100),${toNumber(priceUsd, 0)})`, result: toNumber(priceUsd, 0) }
     : priceUsd;
   row.getCell(5).value = { formula: `D${r}*B$4`, result: toNumber(priceUsd, 0) * (sheet.getCell('B4').value || 1) };
   row.getCell(6).value = { formula: `C${r}*D${r}`, result: toNumber(totalUsd, 0) || (toNumber(qty, 0) * toNumber(priceUsd, 0)) };
@@ -113,7 +113,7 @@ const writeRow = ({ sheet, rowNumber, isOffer, name, unit, qty, priceUsd, totalU
     row.getCell(10).value = { formula: `C${r}*H${r}`, result: toNumber(totalCostUsd, 0) || (toNumber(qty, 0) * toNumber(incomingUsd, 0)) };
     row.getCell(11).value = { formula: `F${r}-J${r}`, result: toNumber(totalMarginUsd, 0) || ((toNumber(totalUsd, 0) || (toNumber(qty, 0) * toNumber(priceUsd, 0))) - (toNumber(totalCostUsd, 0) || (toNumber(qty, 0) * toNumber(incomingUsd, 0)))) };
     row.getCell(12).value = { formula: `K${r}*B$4`, result: (toNumber(totalMarginUsd, 0) || ((toNumber(totalUsd, 0) || (toNumber(qty, 0) * toNumber(priceUsd, 0))) - (toNumber(totalCostUsd, 0) || (toNumber(qty, 0) * toNumber(incomingUsd, 0))))) * (sheet.getCell('B4').value || 1) };
-    row.getCell(13).value = { formula: `IF(F${r}>0;K${r}/F${r}*100;0)` };
+    row.getCell(13).value = { formula: `IF(F${r}>0,K${r}/F${r}*100,0)` };
     row.getCell(13).numFmt = '0.0';
     row.getCell(9).numFmt = '0.0';
   }
@@ -320,7 +320,7 @@ async function exportToExcelFile({
 
     const workbook = workbookOverride || new window.ExcelJS.Workbook();
     // Force Excel to recalculate all formulas on file open.
-    workbook.calcProperties = { fullCalcOnLoad: true };
+    workbook.calcProperties = { fullCalcOnLoad: true, forceFullCalc: true };
     const sheet = workbook.addWorksheet(
       String(sheetNameOverride || (isOffer ? 'КП' : 'Накладна')).slice(0, 31)
     );
@@ -1068,7 +1068,7 @@ const isExpandableByType = (groupKey) => {
       sheet.getCell(`J${installWorkRowNumber}`).value = 0;
       sheet.getCell(`K${installWorkRowNumber}`).value = { formula: `F${installWorkRowNumber}-J${installWorkRowNumber}` };
       sheet.getCell(`L${installWorkRowNumber}`).value = { formula: `K${installWorkRowNumber}*B$4` };
-      sheet.getCell(`M${installWorkRowNumber}`).value = { formula: `IF(F${installWorkRowNumber}>0;K${installWorkRowNumber}/F${installWorkRowNumber}*100;0)` };
+      sheet.getCell(`M${installWorkRowNumber}`).value = { formula: `IF(F${installWorkRowNumber}>0,K${installWorkRowNumber}/F${installWorkRowNumber}*100,0)` };
       sheet.getCell(`M${installWorkRowNumber}`).numFmt = '0.0';
     }
     currentRow += 1;
@@ -1095,7 +1095,7 @@ const isExpandableByType = (groupKey) => {
     }
     // Show dynamic % of works from materials directly in the row label.
     insRow.getCell(1).value = {
-      formula: `CONCAT("Всього монтаж та запуск (";TEXT(IF(F${summaryStartRow}>0;F${insRow.number}/F${summaryStartRow}*100;0);"0.0");"% від суми товарів):")`
+      formula: `CONCAT("Всього монтаж та запуск (",TEXT(IF(F${summaryStartRow}>0,F${insRow.number}/F${summaryStartRow}*100,0),"0.0"),"% від суми товарів):")`
     };
     enforceTotalsGreen(insRow);
   }
@@ -1139,7 +1139,7 @@ const isExpandableByType = (groupKey) => {
       finalRow.getCell(11).value = { formula: `K${summaryStartRow}+K${logRow.number}` };
       finalRow.getCell(12).value = { formula: `L${summaryStartRow}+L${logRow.number}` };
     }
-    finalRow.getCell(13).value = { formula: `IF(F${finalRow.number}>0;K${finalRow.number}/F${finalRow.number}*100;0)` };
+    finalRow.getCell(13).value = { formula: `IF(F${finalRow.number}>0,K${finalRow.number}/F${finalRow.number}*100,0)` };
     finalRow.getCell(13).numFmt = '0.0';
     [10, 11, 12, 13].forEach((i) => {
       const c = finalRow.getCell(i);
@@ -1159,7 +1159,7 @@ const isExpandableByType = (groupKey) => {
       withoutDiscountRow.getCell(10).value = toNumber(calculations?.sums?.orderCostUsd, 0);
       withoutDiscountRow.getCell(11).value = toNumber(calculations?.sums?.finalTotalUsd, 0) - toNumber(calculations?.sums?.orderCostUsd, 0);
       withoutDiscountRow.getCell(12).value = (toNumber(calculations?.sums?.finalTotalUsd, 0) - toNumber(calculations?.sums?.orderCostUsd, 0)) * toNumber(rates?.usd, 1);
-      withoutDiscountRow.getCell(13).value = { formula: `IF(F${withoutDiscountRow.number}>0;K${withoutDiscountRow.number}/F${withoutDiscountRow.number}*100;0)` };
+      withoutDiscountRow.getCell(13).value = { formula: `IF(F${withoutDiscountRow.number}>0,K${withoutDiscountRow.number}/F${withoutDiscountRow.number}*100,0)` };
       withoutDiscountRow.getCell(13).numFmt = '0.0';
       for (let i = 1; i <= outHeaders.length; i += 1) {
         const c = withoutDiscountRow.getCell(i);
@@ -1186,7 +1186,7 @@ const isExpandableByType = (groupKey) => {
       withDiscountRow.getCell(10).value = toNumber(calculations?.sums?.orderCostUsd, 0);
       withDiscountRow.getCell(11).value = toNumber(calculations?.sums?.finalTotalWithDiscountUsd, 0) - toNumber(calculations?.sums?.orderCostUsd, 0);
       withDiscountRow.getCell(12).value = (toNumber(calculations?.sums?.finalTotalWithDiscountUsd, 0) - toNumber(calculations?.sums?.orderCostUsd, 0)) * toNumber(rates?.usd, 1);
-      withDiscountRow.getCell(13).value = { formula: `IF(F${withDiscountRow.number}>0;K${withDiscountRow.number}/F${withDiscountRow.number}*100;0)` };
+      withDiscountRow.getCell(13).value = { formula: `IF(F${withDiscountRow.number}>0,K${withDiscountRow.number}/F${withDiscountRow.number}*100,0)` };
       withDiscountRow.getCell(13).numFmt = '0.0';
       for (let i = 1; i <= outHeaders.length; i += 1) {
         const c = withDiscountRow.getCell(i);
@@ -1671,6 +1671,7 @@ async function exportAllOffersToExcelFile({
     }
 
     const workbook = new window.ExcelJS.Workbook();
+    workbook.calcProperties = { fullCalcOnLoad: true, forceFullCalc: true };
     const used = new Set();
     const normalized = offerSheets.map((sheet, idx) => {
       const base = toSheetName(sheet?.name || `КП ${idx + 1}`, `КП ${idx + 1}`);
@@ -1754,6 +1755,7 @@ async function exportBankOfferExcelFile({
     }
 
     const workbook = new window.ExcelJS.Workbook();
+    workbook.calcProperties = { fullCalcOnLoad: true, forceFullCalc: true };
     const sheet = workbook.addWorksheet('ФОП без робіт');
     const usdRate = Math.max(0.000001, toNumber(rates?.usd, 1));
     const safeGroups = (calculations?.groups && typeof calculations.groups === 'object') ? calculations.groups : {};
