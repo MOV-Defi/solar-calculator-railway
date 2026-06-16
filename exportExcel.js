@@ -1916,3 +1916,145 @@ async function exportBankOfferExcelFile({
 }
 
 window.exportBankOfferExcelFile = exportBankOfferExcelFile;
+
+async function exportPurchaseExcelFile({
+  clientInfo,
+  calculations,
+  workspaceHandle,
+  projectFolderName,
+  purchaseRows = []
+}) {
+  try {
+    if (typeof window.ExcelJS === 'undefined') {
+      throw new Error('Бібліотека ExcelJS не завантажена. Спробуйте оновити сторінку.');
+    }
+
+    const rows = (Array.isArray(purchaseRows) ? purchaseRows : [])
+      .filter((row) => row && row.selected !== false && String(row.name || '').trim())
+      .map((row) => {
+        const qty = Math.max(0, toNumber(row.qty, 0));
+        const saleSumUah = Math.max(0, toNumber(row.saleSumUah, 0));
+        const purchasePercent = Math.max(0, toNumber(row.purchasePercent, 0));
+        const taxPercent = Math.max(0, toNumber(row.taxPercent, 0));
+        const purchaseSumUah = saleSumUah * purchasePercent / 100;
+        const taxUah = purchaseSumUah * taxPercent / 100;
+        const totalWithTaxUah = purchaseSumUah + taxUah;
+        return {
+          name: String(row.name || '').trim(),
+          unit: row.unit || 'шт.',
+          qty,
+          saleSumUah,
+          purchasePercent,
+          purchaseUnitUah: qty > 0 ? purchaseSumUah / qty : 0,
+          purchaseSumUah,
+          taxPercent,
+          taxUah,
+          totalWithTaxUah
+        };
+      })
+      .filter((row) => row.qty > 0 && row.saleSumUah > 0);
+
+    if (rows.length === 0) {
+      throw new Error('Не вибрано жодної позиції для закупки.');
+    }
+
+    const workbook = new window.ExcelJS.Workbook();
+    workbook.calcProperties = { fullCalcOnLoad: true, forceFullCalc: true };
+    const sheet = workbook.addWorksheet('Закупка');
+    sheet.columns = [
+      { width: 52 },
+      { width: 10 },
+      { width: 10 },
+      { width: 16 },
+      { width: 12 },
+      { width: 18 },
+      { width: 18 },
+      { width: 12 },
+      { width: 16 },
+      { width: 18 }
+    ];
+
+    const headerRow = sheet.addRow([
+      'Найменування устаткування / Модель',
+      'Од. вим.',
+      'Кіл-ть',
+      'Сума продажу, грн',
+      '% закупки',
+      'Ціна закупки, грн',
+      'Сума закупки, грн',
+      '% податку',
+      'Податок, грн',
+      'Разом з податком, грн'
+    ]);
+    headerRow.height = 32;
+    headerRow.eachCell((cell) => {
+      cell.font = { bold: true, size: 11, color: { argb: 'FFFFFFFF' } };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF153772' } };
+      cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+      cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+    });
+
+    rows.forEach((item, idx) => {
+      const row = sheet.addRow([
+        item.name,
+        item.unit,
+        item.qty,
+        item.saleSumUah,
+        item.purchasePercent,
+        item.purchaseUnitUah,
+        item.purchaseSumUah,
+        item.taxPercent,
+        item.taxUah,
+        item.totalWithTaxUah
+      ]);
+      row.height = 24;
+      row.eachCell((cell, col) => {
+        cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+        cell.alignment = { horizontal: col === 1 ? 'left' : 'right', vertical: 'middle', wrapText: col === 1 };
+        if (col !== 1 && col !== 2 && col !== 3 && col !== 5 && col !== 8) cell.numFmt = '#,##0.00';
+        if (col === 5 || col === 8) cell.numFmt = '0.00';
+        if (idx % 2 === 1) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } };
+      });
+    });
+
+    const totalRow = sheet.addRow([
+      'РАЗОМ',
+      '',
+      '',
+      { formula: `SUM(D2:D${rows.length + 1})` },
+      '',
+      '',
+      { formula: `SUM(G2:G${rows.length + 1})` },
+      '',
+      { formula: `SUM(I2:I${rows.length + 1})` },
+      { formula: `SUM(J2:J${rows.length + 1})` }
+    ]);
+    totalRow.eachCell((cell, col) => {
+      cell.font = { bold: true, size: 12 };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFDE68A' } };
+      cell.border = { top: { style: 'medium' }, left: { style: 'thin' }, bottom: { style: 'medium' }, right: { style: 'thin' } };
+      cell.alignment = { horizontal: col === 1 ? 'left' : 'right', vertical: 'middle' };
+      if ([4, 7, 9, 10].includes(col)) cell.numFmt = '#,##0.00';
+    });
+
+    const outBuffer = await workbook.xlsx.writeBuffer();
+    const outBlob = new Blob([outBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const outBaseDocName = buildDocumentBaseName(clientInfo, calculations?.stationPowerW || 0);
+    const outFileName = `${outBaseDocName}_Excel_Закупка.xlsx`;
+
+    await saveToDiskUtility(
+      workspaceHandle,
+      clientInfo,
+      calculations,
+      outFileName,
+      outBlob,
+      'Excel Закупка',
+      projectFolderName
+    );
+  } catch (err) {
+    console.error('Excel Purchase Export Error:', err);
+    alert(`Помилка при створенні Excel закупки: ${err.message}`);
+  }
+}
+
+window.exportPurchaseExcelFile = exportPurchaseExcelFile;

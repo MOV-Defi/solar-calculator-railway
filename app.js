@@ -572,6 +572,8 @@ function App() {
   const [activeOfferSheetId, setActiveOfferSheetId] = useState(() => getSaved('solar_activeOfferSheetId', DEFAULT_OFFER_SHEETS[0].id));
   const [showOfferComparisonSheet, setShowOfferComparisonSheet] = useState(false);
   const [editingOfferSheetId, setEditingOfferSheetId] = useState('');
+  const [purchaseExportOpen, setPurchaseExportOpen] = useState(false);
+  const [purchaseExportRows, setPurchaseExportRows] = useState([]);
   const isApplyingOfferSheetRef = useRef(false);
   const isApplyingSnapshotRef = useRef(false);
 
@@ -1744,6 +1746,65 @@ function App() {
     setOfferSheets((prev) => (Array.isArray(prev) ? prev : []).map((sheet) => (
       String(sheet.id) === targetId ? { ...sheet, name: nextName } : sheet
     )));
+  };
+
+  const buildPurchaseExportRows = () => {
+    const rows = [];
+    const groups = calculations?.groups && typeof calculations.groups === 'object' ? calculations.groups : {};
+    Object.keys(groups).forEach((groupKey) => {
+      const items = Array.isArray(groups[groupKey]) ? groups[groupKey] : [];
+      items.forEach((item, idx) => {
+        const name = String(item?.name || '').trim();
+        const qty = Math.max(0, toNumber(item?.quantity, 0));
+        const saleSumUah = Math.max(0, toNumber(item?.sumUah, 0));
+        if (!name || qty <= 0 || saleSumUah <= 0) return;
+        rows.push({
+          id: `${groupKey}_${item.id || idx}_${rows.length}`,
+          selected: true,
+          groupKey,
+          name,
+          unit: item?.unit || 'шт.',
+          qty,
+          saleSumUah,
+          purchasePercent: 52,
+          taxPercent: 0
+        });
+      });
+    });
+    return rows;
+  };
+
+  const openPurchaseExportDialog = () => {
+    persistCurrentSheetState();
+    const rows = buildPurchaseExportRows();
+    if (rows.length === 0) {
+      alert('У поточному КП немає товарних позицій для закупки.');
+      return;
+    }
+    setPurchaseExportRows(rows);
+    setPurchaseExportOpen(true);
+  };
+
+  const updatePurchaseExportRow = (id, patch) => {
+    setPurchaseExportRows((prev) => prev.map((row) => (
+      String(row.id) === String(id) ? { ...row, ...patch } : row
+    )));
+  };
+
+  const exportPurchaseRows = async () => {
+    const selectedRows = purchaseExportRows.filter((row) => row.selected);
+    if (selectedRows.length === 0) {
+      alert('Оберіть хоча б одну позицію для закупки.');
+      return;
+    }
+    await exportPurchaseExcelFile({
+      clientInfo,
+      calculations,
+      workspaceHandle,
+      projectFolderName: (projectName || '').trim(),
+      purchaseRows: selectedRows
+    });
+    setPurchaseExportOpen(false);
   };
 
   const exportToExcel = async (mode = 'offer', detailLevel = 'summary') => {
@@ -3595,6 +3656,7 @@ function App() {
             <button type="button" className="secondary menu-action-btn" data-cat="export" style={{background: "#0f766e"}} onClick={() => exportToExcel("offer", "full")} data-title="Excel (повна)"><MenuBtnLabel icon="📗" label="Excel (повна)" /></button>
             <button type="button" className="secondary menu-action-btn" data-cat="export" style={{background: "#14532d"}} onClick={() => exportToExcel("offer_tax_full")} data-title="Excel (повна + податки)"><MenuBtnLabel icon="🧮" label="Excel (повна + податки)" /></button>
             <button type="button" className="secondary menu-action-btn" data-cat="export" style={{background: "#0b7285"}} onClick={() => exportToExcel("offer_bank")} data-title="Excel (ФОП без робіт)"><MenuBtnLabel icon="🏦" label="Excel (ФОП без робіт)" /></button>
+            <button type="button" className="secondary menu-action-btn" data-cat="export" style={{background: "#92400e"}} onClick={openPurchaseExportDialog} data-title="Excel закупка"><MenuBtnLabel icon="🛒" label="Excel закупка" /></button>
             <button type="button" className="secondary menu-action-btn" data-cat="print" style={{background: '#7c3aed'}} onClick={() => setPrintMode('offer')} data-title="КП"><MenuBtnLabel icon="📄" label="КП" /></button>
             <button type="button" className="secondary menu-action-btn" data-cat="print" style={{background: '#3b82f6'}} onClick={() => setPrintMode('invoice')} data-title="Накладна"><MenuBtnLabel icon="🧾" label="Накладна" /></button>
           </div>
@@ -5066,6 +5128,91 @@ function App() {
             ))}
             <button type="button" className="danger" onClick={quickCalcClearAll}>C</button>
             <button type="button" className="secondary" style={{gridColumn: 'span 3'}} onClick={quickCalcClearAll}>Стерти все</button>
+          </div>
+        </div>
+      )}
+
+      {purchaseExportOpen && (
+        <div className="project-modal-overlay">
+          <div className="project-modal-card" style={{maxWidth: '1100px', width: '92vw'}}>
+            <h3 style={{marginBottom: '0.35rem'}}>Excel закупка</h3>
+            <p style={{color: 'var(--text-muted)', marginBottom: '0.8rem'}}>
+              Обери позиції, вкажи % від суми продажу та % податку окремо для кожної позиції.
+            </p>
+            <div style={{maxHeight: '58vh', overflow: 'auto', border: '1px solid var(--border-color)', borderRadius: '8px'}}>
+              <table className="data-table" style={{width: '100%', minWidth: '900px'}}>
+                <thead>
+                  <tr>
+                    <th style={{width: '52px'}}>✓</th>
+                    <th>Позиція</th>
+                    <th>Од.</th>
+                    <th className="text-right">Кіл-ть</th>
+                    <th className="text-right">Сума продажу, грн</th>
+                    <th className="text-right">% закупки</th>
+                    <th className="text-right">% податку</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {purchaseExportRows.map((row) => (
+                    <tr key={row.id}>
+                      <td className="text-center">
+                        <input
+                          type="checkbox"
+                          checked={!!row.selected}
+                          onChange={(e) => updatePurchaseExportRow(row.id, { selected: e.target.checked })}
+                        />
+                      </td>
+                      <td>
+                        <div style={{fontWeight: 700}}>{row.name}</div>
+                        <div style={{fontSize: '0.78rem', color: 'var(--text-muted)'}}>{row.groupKey}</div>
+                      </td>
+                      <td>{row.unit}</td>
+                      <td className="text-right">{formatMoney(row.qty)}</td>
+                      <td className="text-right">{formatMoney(row.saleSumUah)}</td>
+                      <td>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.1"
+                          className="text-right"
+                          value={row.purchasePercent}
+                          onChange={(e) => updatePurchaseExportRow(row.id, { purchasePercent: parseNumberInput(e.target.value) })}
+                        />
+                      </td>
+                      <td>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.1"
+                          className="text-right"
+                          value={row.taxPercent}
+                          onChange={(e) => updatePurchaseExportRow(row.id, { taxPercent: parseNumberInput(e.target.value) })}
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="flex" style={{gap: '0.75rem', marginTop: '1rem', justifyContent: 'space-between', flexWrap: 'wrap'}}>
+              <div style={{color: 'var(--text-muted)', fontSize: '0.9rem'}}>
+                Обрано: <strong>{purchaseExportRows.filter((row) => row.selected).length}</strong> позицій
+              </div>
+              <div className="flex" style={{gap: '0.5rem', flexWrap: 'wrap'}}>
+                <button type="button" className="secondary" style={{background: '#475569'}} onClick={() => setPurchaseExportRows((prev) => prev.map((row) => ({...row, selected: true})))}>
+                  Обрати всі
+                </button>
+                <button type="button" className="secondary" style={{background: '#475569'}} onClick={() => setPurchaseExportRows((prev) => prev.map((row) => ({...row, selected: false})))}>
+                  Зняти всі
+                </button>
+                <button type="button" className="danger" onClick={() => setPurchaseExportOpen(false)}>
+                  Скасувати
+                </button>
+                <button type="button" className="secondary" style={{background: '#0f766e'}} onClick={exportPurchaseRows}>
+                  Сформувати закупку
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
