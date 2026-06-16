@@ -108,6 +108,10 @@ const DEFAULT_MANAGER_CONTACTS = [
   { id: "manager_oleg_minakov", name: "Олег Мінаков", phone: "+380933990622" }
 ];
 const COVER_PAGE_TYPES = ["Будинок", "Квартира", "Виробництво", "Наземна станція"];
+const COVER_PAGE_IMAGES = {
+  "Квартира": "./title2.jpg",
+  "Наземна станція": "./title3.jpg"
+};
 const GENERATION_REGION_PROFILES = {
   south: {
     annualYieldKwhPerKw: 1300,
@@ -5256,7 +5260,7 @@ function App() {
           <div className={`print-container ${printMode === 'offer' ? 'offer-print-container' : ''} ${printMode === 'invoice' ? 'invoice-print-container' : ''}`}>
             {printMode === "offer" && (
               <div className="offer-cover-page">
-                <img className="offer-cover-image" src={coverPageType === 'Квартира' ? './title2.jpg' : './title1.jpg'} alt="Обкладинка КП" />
+                <img className="offer-cover-image" src={COVER_PAGE_IMAGES[coverPageType] || './title1.jpg'} alt="Обкладинка КП" />
                 <div className="offer-cover-content">
                   <div className="offer-cover-top">
                     {showObjectTypeOnCover && coverPageType
