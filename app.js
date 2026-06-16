@@ -1767,7 +1767,7 @@ function App() {
           qty,
           saleSumUah,
           purchasePercent: 52,
-          taxPercent: 0
+          taxPercent: 7
         });
       });
     });
