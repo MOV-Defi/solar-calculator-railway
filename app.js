@@ -579,6 +579,7 @@ function App() {
   const [editingOfferSheetId, setEditingOfferSheetId] = useState('');
   const [purchaseExportOpen, setPurchaseExportOpen] = useState(false);
   const [purchaseExportRows, setPurchaseExportRows] = useState([]);
+  const [purchaseDistributeServices, setPurchaseDistributeServices] = useState(false);
   const isApplyingOfferSheetRef = useRef(false);
   const isApplyingSnapshotRef = useRef(false);
 
@@ -1810,7 +1811,8 @@ function App() {
       calculations,
       workspaceHandle,
       projectFolderName: (currentProjectFolderName || projectName || '').trim(),
-      purchaseRows: selectedRows
+      purchaseRows: selectedRows,
+      distributeServices: purchaseDistributeServices
     });
     setPurchaseExportOpen(false);
   };
@@ -3043,6 +3045,10 @@ function App() {
       netProfitUsd: toNumber(summary.netProfitUsd, 0)
     };
   });
+  const purchaseSelectedRows = purchaseExportRows.filter((row) => row.selected);
+  const purchaseSelectedMaterialsUah = purchaseSelectedRows.reduce((acc, row) => acc + Math.max(0, toNumber(row.saleSumUah, 0)), 0);
+  const purchaseServicesToDistributeUah = Math.max(0, toNumber(calculations?.sums?.installationTotalUah, 0) + toNumber(calculations?.sums?.logisticsTotalUah, 0));
+  const purchaseBaseWithServicesUah = purchaseSelectedMaterialsUah + (purchaseDistributeServices ? purchaseServicesToDistributeUah : 0);
 
   const getSupabaseClient = () => {
     if (!window.supabase || !window.supabase.createClient) return null;
@@ -5151,6 +5157,19 @@ function App() {
             <p style={{color: 'var(--text-muted)', marginBottom: '0.8rem'}}>
               Обери позиції, вкажи % від суми продажу та % податку окремо для кожної позиції.
             </p>
+            <label className="flex items-center" style={{gap: '0.55rem', marginBottom: '0.7rem', color: 'var(--text-main)'}}>
+              <input
+                type="checkbox"
+                checked={purchaseDistributeServices}
+                onChange={(e) => setPurchaseDistributeServices(e.target.checked)}
+              />
+              <span>Розкинути роботи і логістику по матеріальних позиціях</span>
+            </label>
+            <div className="flex" style={{gap: '0.75rem', flexWrap: 'wrap', marginBottom: '0.8rem', color: 'var(--text-muted)', fontSize: '0.9rem'}}>
+              <span>Матеріали: <strong>{formatMoney(purchaseSelectedMaterialsUah)} грн</strong></span>
+              <span>Роботи + логістика: <strong>{formatMoney(purchaseServicesToDistributeUah)} грн</strong></span>
+              <span>База закупки: <strong>{formatMoney(purchaseBaseWithServicesUah)} грн</strong></span>
+            </div>
             <div style={{maxHeight: '58vh', overflow: 'auto', border: '1px solid var(--border-color)', borderRadius: '8px'}}>
               <table className="data-table" style={{width: '100%', minWidth: '900px'}}>
                 <thead>
@@ -5208,7 +5227,7 @@ function App() {
             </div>
             <div className="flex" style={{gap: '0.75rem', marginTop: '1rem', justifyContent: 'space-between', flexWrap: 'wrap'}}>
               <div style={{color: 'var(--text-muted)', fontSize: '0.9rem'}}>
-                Обрано: <strong>{purchaseExportRows.filter((row) => row.selected).length}</strong> позицій
+                Обрано: <strong>{purchaseSelectedRows.length}</strong> позицій
               </div>
               <div className="flex" style={{gap: '0.5rem', flexWrap: 'wrap'}}>
                 <button type="button" className="secondary" style={{background: '#475569'}} onClick={() => setPurchaseExportRows((prev) => prev.map((row) => ({...row, selected: true})))}>

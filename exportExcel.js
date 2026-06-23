@@ -1922,21 +1922,30 @@ async function exportPurchaseExcelFile({
   calculations,
   workspaceHandle,
   projectFolderName,
-  purchaseRows = []
+  purchaseRows = [],
+  distributeServices = false
 }) {
   try {
     if (typeof window.ExcelJS === 'undefined') {
       throw new Error('Бібліотека ExcelJS не завантажена. Спробуйте оновити сторінку.');
     }
 
-    const rows = (Array.isArray(purchaseRows) ? purchaseRows : [])
-      .filter((row) => row && row.selected !== false && String(row.name || '').trim())
+    const inputRows = (Array.isArray(purchaseRows) ? purchaseRows : [])
+      .filter((row) => row && row.selected !== false && String(row.name || '').trim());
+    const selectedSaleTotalUah = inputRows.reduce((acc, row) => acc + Math.max(0, toNumber(row.saleSumUah, 0)), 0);
+    const servicesToDistributeUah = distributeServices
+      ? Math.max(0, toNumber(calculations?.sums?.installationTotalUah, 0) + toNumber(calculations?.sums?.logisticsTotalUah, 0))
+      : 0;
+
+    const rows = inputRows
       .map((row) => {
         const qty = Math.max(0, toNumber(row.qty, 0));
         const saleSumUah = Math.max(0, toNumber(row.saleSumUah, 0));
         const purchasePercent = Math.max(0, toNumber(row.purchasePercent, 0));
         const taxPercent = Math.max(0, toNumber(row.taxPercent, 0));
-        const purchaseSumUah = saleSumUah * purchasePercent / 100;
+        const serviceShareUah = selectedSaleTotalUah > 0 ? (servicesToDistributeUah * saleSumUah / selectedSaleTotalUah) : 0;
+        const purchaseBaseUah = saleSumUah + serviceShareUah;
+        const purchaseSumUah = purchaseBaseUah * purchasePercent / 100;
         const taxUah = purchaseSumUah * taxPercent / 100;
         const totalWithTaxUah = purchaseSumUah + taxUah;
         return {
@@ -1944,6 +1953,8 @@ async function exportPurchaseExcelFile({
           unit: row.unit || 'шт.',
           qty,
           saleSumUah,
+          serviceShareUah,
+          purchaseBaseUah,
           purchasePercent,
           purchaseUnitUah: qty > 0 ? purchaseSumUah / qty : 0,
           purchaseSumUah,
@@ -1969,6 +1980,8 @@ async function exportPurchaseExcelFile({
       { width: 12 },
       { width: 18 },
       { width: 18 },
+      { width: 18 },
+      { width: 18 },
       { width: 12 },
       { width: 16 },
       { width: 18 }
@@ -1978,7 +1991,9 @@ async function exportPurchaseExcelFile({
       'Найменування устаткування / Модель',
       'Од. вим.',
       'Кіл-ть',
-      'Сума продажу, грн',
+      'Матеріали, грн',
+      'Розподіл робіт/логістики, грн',
+      'База закупки, грн',
       '% закупки',
       'Ціна закупки, грн',
       'Сума закупки, грн',
@@ -2000,6 +2015,8 @@ async function exportPurchaseExcelFile({
         item.unit,
         item.qty,
         item.saleSumUah,
+        item.serviceShareUah,
+        item.purchaseBaseUah,
         item.purchasePercent,
         item.purchaseUnitUah,
         item.purchaseSumUah,
@@ -2011,8 +2028,8 @@ async function exportPurchaseExcelFile({
       row.eachCell((cell, col) => {
         cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
         cell.alignment = { horizontal: col === 1 ? 'left' : 'right', vertical: 'middle', wrapText: col === 1 };
-        if (col !== 1 && col !== 2 && col !== 3 && col !== 5 && col !== 8) cell.numFmt = '#,##0.00';
-        if (col === 5 || col === 8) cell.numFmt = '0.00';
+        if (col !== 1 && col !== 2 && col !== 3 && col !== 7 && col !== 10) cell.numFmt = '#,##0.00';
+        if (col === 7 || col === 10) cell.numFmt = '0.00';
         if (idx % 2 === 1) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } };
       });
     });
@@ -2022,19 +2039,21 @@ async function exportPurchaseExcelFile({
       '',
       '',
       { formula: `SUM(D2:D${rows.length + 1})` },
+      { formula: `SUM(E2:E${rows.length + 1})` },
+      { formula: `SUM(F2:F${rows.length + 1})` },
       '',
-      '',
-      { formula: `SUM(G2:G${rows.length + 1})` },
       '',
       { formula: `SUM(I2:I${rows.length + 1})` },
-      { formula: `SUM(J2:J${rows.length + 1})` }
+      '',
+      { formula: `SUM(K2:K${rows.length + 1})` },
+      { formula: `SUM(L2:L${rows.length + 1})` }
     ]);
     totalRow.eachCell((cell, col) => {
       cell.font = { bold: true, size: 12 };
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFDE68A' } };
       cell.border = { top: { style: 'medium' }, left: { style: 'thin' }, bottom: { style: 'medium' }, right: { style: 'thin' } };
       cell.alignment = { horizontal: col === 1 ? 'left' : 'right', vertical: 'middle' };
-      if ([4, 7, 9, 10].includes(col)) cell.numFmt = '#,##0.00';
+      if ([4, 5, 6, 9, 11, 12].includes(col)) cell.numFmt = '#,##0.00';
     });
 
     const outBuffer = await workbook.xlsx.writeBuffer();
