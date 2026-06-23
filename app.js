@@ -3049,6 +3049,11 @@ function App() {
   const purchaseSelectedMaterialsUah = purchaseSelectedRows.reduce((acc, row) => acc + Math.max(0, toNumber(row.saleSumUah, 0)), 0);
   const purchaseServicesToDistributeUah = Math.max(0, toNumber(calculations?.sums?.installationTotalUah, 0) + toNumber(calculations?.sums?.logisticsTotalUah, 0));
   const purchaseBaseWithServicesUah = purchaseSelectedMaterialsUah + (purchaseDistributeServices ? purchaseServicesToDistributeUah : 0);
+  const getPurchaseRowSaleBaseUah = (row) => {
+    const saleSumUah = Math.max(0, toNumber(row?.saleSumUah, 0));
+    if (!purchaseDistributeServices || !row?.selected || purchaseSelectedMaterialsUah <= 0) return saleSumUah;
+    return saleSumUah + (purchaseServicesToDistributeUah * saleSumUah / purchaseSelectedMaterialsUah);
+  };
 
   const getSupabaseClient = () => {
     if (!window.supabase || !window.supabase.createClient) return null;
@@ -5178,7 +5183,7 @@ function App() {
                     <th>Позиція</th>
                     <th>Од.</th>
                     <th className="text-right">Кіл-ть</th>
-                    <th className="text-right">Сума продажу, грн</th>
+                    <th className="text-right">{purchaseDistributeServices ? 'Ціна товару з роботами/логістикою, грн' : 'Сума продажу, грн'}</th>
                     <th className="text-right">% закупки</th>
                     <th className="text-right">% податку</th>
                   </tr>
@@ -5199,7 +5204,7 @@ function App() {
                       </td>
                       <td>{row.unit}</td>
                       <td className="text-right">{formatMoney(row.qty)}</td>
-                      <td className="text-right">{formatMoney(row.saleSumUah)}</td>
+                      <td className="text-right">{formatMoney(getPurchaseRowSaleBaseUah(row))}</td>
                       <td>
                         <input
                           type="number"
