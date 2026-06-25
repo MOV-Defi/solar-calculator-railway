@@ -25,6 +25,27 @@ app.use((req, res, next) => {
 
 const hasSupabaseConfig = () => Boolean(SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY);
 
+const parseBearerToken = (req) => {
+  const auth = req?.headers?.authorization || '';
+  const match = String(auth).match(/^Bearer\s+(.+)$/i);
+  return match ? match[1].trim() : '';
+};
+
+const resolveUser = async (req) => {
+  const token = parseBearerToken(req);
+  if (!token || !SUPABASE_URL) return null;
+  const response = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+    method: 'GET',
+    headers: {
+      apikey: SUPABASE_SERVICE_ROLE_KEY,
+      Authorization: `Bearer ${token}`
+    }
+  });
+  if (!response.ok) return null;
+  const user = await response.json().catch(() => null);
+  return user?.id ? { id: String(user.id) } : null;
+};
+
 const ensureLocalTemplatesFile = () => {
   if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
   if (!fs.existsSync(LOCAL_TEMPLATES_FILE)) {
@@ -42,7 +63,9 @@ const normalizeTemplatesPayload = (templates) => ({
   templates: Array.isArray(templates) ? templates.map((t) => ({
     id: String(t?.id || ''),
     name: String(t?.name || ''),
-    data: t?.data && typeof t.data === 'object' ? t.data : {}
+    data: t?.data && typeof t.data === 'object' ? t.data : {},
+    visibility: t?.visibility === 'private' ? 'private' : 'shared',
+    ownerId: t?.ownerId ? String(t.ownerId) : (t?.owner_id ? String(t.owner_id) : null)
   })) : []
 });
 
@@ -65,22 +88,72 @@ const supabaseHeaders = () => ({
   Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`
 });
 
-const readSupabaseTemplates = async () => {
-  const url = `${SUPABASE_URL}/rest/v1/${SUPABASE_TEMPLATES_TABLE}?select=id,name,data,updated_at&order=updated_at.desc`;
+const readSupabaseTemplates = async (user) => {
+  const filter = user?.id
+    ? `or=(visibility.eq.shared,and(visibility.eq.private,owner_id.eq.${encodeURIComponent(user.id)}))`
+    : `visibility.eq.shared`;
+  const url = `${SUPABASE_URL}/rest/v1/${SUPABASE_TEMPLATES_TABLE}?select=id,name,data,updated_at,visibility,owner_id&${filter}&order=updated_at.desc`;
   const response = await fetch(url, { headers: supabaseHeaders() });
   if (!response.ok) throw new Error(`supabase_read_failed_${response.status}`);
   const rows = await response.json();
   const templates = (Array.isArray(rows) ? rows : []).map((row) => ({
     id: String(row?.id || ''),
     name: String(row?.name || ''),
-    data: row?.data && typeof row.data === 'object' ? row.data : {}
+    data: row?.data && typeof row.data === 'object' ? row.data : {},
+    visibility: row?.visibility === 'private' ? 'private' : 'shared',
+    ownerId: row?.owner_id ? String(row.owner_id) : null
   }));
   return normalizeTemplatesPayload(templates);
 };
 
-const writeSupabaseTemplates = async (templates) => {
+const fetchSupabaseTemplateIdsForScope = async ({ visibility, user }) => {
+  const params = [`select=id`, `visibility=eq.${visibility}`];
+  if (visibility === 'private') {
+    if (!user?.id) return [];
+    params.push(`owner_id=eq.${encodeURIComponent(user.id)}`);
+  }
+  const url = `${SUPABASE_URL}/rest/v1/${SUPABASE_TEMPLATES_TABLE}?${params.join('&')}`;
+  const response = await fetch(url, { headers: supabaseHeaders() });
+  if (!response.ok) throw new Error(`supabase_delete_read_failed_${response.status}`);
+  const rows = await response.json();
+  return (Array.isArray(rows) ? rows : []).map((row) => String(row?.id || '')).filter(Boolean);
+};
+
+const deleteSupabaseTemplateIds = async (ids) => {
+  const uniqueIds = Array.from(new Set((Array.isArray(ids) ? ids : []).map((id) => String(id || '')).filter(Boolean)));
+  if (uniqueIds.length === 0) return;
+  const quoted = uniqueIds.map((id) => encodeURIComponent(`"${String(id).replace(/"/g, '\\"')}"`)).join(',');
+  const url = `${SUPABASE_URL}/rest/v1/${SUPABASE_TEMPLATES_TABLE}?id=in.(${quoted})`;
+  const response = await fetch(url, {
+    method: 'DELETE',
+    headers: supabaseHeaders()
+  });
+  if (!response.ok) throw new Error(`supabase_delete_failed_${response.status}`);
+};
+
+const deleteMissingSupabaseTemplatesForScope = async ({ templates, visibility, user }) => {
+  const incomingIds = new Set((Array.isArray(templates) ? templates : [])
+    .filter((t) => (t?.visibility === 'private' ? 'private' : 'shared') === visibility)
+    .map((t) => String(t?.id || ''))
+    .filter(Boolean));
+  const existingIds = await fetchSupabaseTemplateIdsForScope({ visibility, user });
+  await deleteSupabaseTemplateIds(existingIds.filter((id) => !incomingIds.has(id)));
+};
+
+const writeSupabaseTemplates = async (templates, user) => {
   const payload = normalizeTemplatesPayload(templates).templates;
+  await deleteMissingSupabaseTemplatesForScope({ templates: payload, visibility: 'shared', user });
+  await deleteMissingSupabaseTemplatesForScope({ templates: payload, visibility: 'private', user });
+
   const url = `${SUPABASE_URL}/rest/v1/${SUPABASE_TEMPLATES_TABLE}?on_conflict=id`;
+  const rows = payload.map((template) => ({
+    id: template.id,
+    name: template.name,
+    data: template.data,
+    visibility: template.visibility === 'private' ? 'private' : 'shared',
+    owner_id: template.visibility === 'private' ? (user?.id || null) : null
+  }));
+  if (rows.length === 0) return;
   const response = await fetch(url, {
     method: 'POST',
     headers: {
@@ -88,7 +161,7 @@ const writeSupabaseTemplates = async (templates) => {
       'Content-Type': 'application/json',
       Prefer: 'resolution=merge-duplicates'
     },
-    body: JSON.stringify(payload)
+    body: JSON.stringify(rows)
   });
   if (!response.ok) throw new Error(`supabase_write_failed_${response.status}`);
 };
@@ -107,9 +180,10 @@ app.get('/api/runtime-config', (_req, res) => {
   });
 });
 
-app.get('/api/templates', async (_req, res) => {
+app.get('/api/templates', async (req, res) => {
   try {
-    const data = hasSupabaseConfig() ? await readSupabaseTemplates() : readLocalTemplates();
+    const user = hasSupabaseConfig() ? await resolveUser(req) : null;
+    const data = hasSupabaseConfig() ? await readSupabaseTemplates(user) : readLocalTemplates();
     return res.json({ ok: true, data });
   } catch (error) {
     return res.status(500).json({ ok: false, error: error?.message || 'read_failed' });
@@ -122,7 +196,8 @@ app.post('/api/templates', async (req, res) => {
     if (!templates) return res.status(400).json({ ok: false, error: 'invalid_templates_payload' });
 
     if (hasSupabaseConfig()) {
-      await writeSupabaseTemplates(templates);
+      const user = await resolveUser(req);
+      await writeSupabaseTemplates(templates, user);
     } else {
       writeLocalTemplates(templates);
     }

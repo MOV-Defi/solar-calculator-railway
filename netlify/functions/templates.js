@@ -67,7 +67,54 @@ const fetchTemplates = async (user) => {
   }));
 };
 
+const fetchTemplateIdsForScope = async ({ visibility, user }) => {
+  const params = [`select=id`, `visibility=eq.${visibility}`];
+  if (visibility === 'private') {
+    if (!user?.id) return [];
+    params.push(`owner_id=eq.${encodeURIComponent(user.id)}`);
+  }
+  const url = `${SUPABASE_URL}/rest/v1/${TABLE_NAME}?${params.join('&')}`;
+  const res = await fetch(url, {
+    method: 'GET',
+    headers: {
+      apikey: SUPABASE_SERVICE_ROLE_KEY,
+      Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`
+    }
+  });
+  if (!res.ok) throw new Error(`supabase_delete_read_failed_${res.status}`);
+  const rows = await res.json();
+  return (Array.isArray(rows) ? rows : []).map((row) => String(row.id || '')).filter(Boolean);
+};
+
+const deleteTemplateIds = async (ids) => {
+  const uniqueIds = Array.from(new Set((Array.isArray(ids) ? ids : []).map((id) => String(id || '')).filter(Boolean)));
+  if (uniqueIds.length === 0) return;
+  const quoted = uniqueIds.map((id) => encodeURIComponent(`"${String(id).replace(/"/g, '\\"')}"`)).join(',');
+  const url = `${SUPABASE_URL}/rest/v1/${TABLE_NAME}?id=in.(${quoted})`;
+  const res = await fetch(url, {
+    method: 'DELETE',
+    headers: {
+      apikey: SUPABASE_SERVICE_ROLE_KEY,
+      Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`
+    }
+  });
+  if (!res.ok) throw new Error(`supabase_delete_failed_${res.status}`);
+};
+
+const deleteMissingTemplatesForScope = async ({ templates, visibility, user }) => {
+  const incomingIds = new Set((Array.isArray(templates) ? templates : [])
+    .filter((t) => (t.visibility === 'private' ? 'private' : 'shared') === visibility)
+    .map((t) => String(t.id || ''))
+    .filter(Boolean));
+  const existingIds = await fetchTemplateIdsForScope({ visibility, user });
+  const idsToDelete = existingIds.filter((id) => !incomingIds.has(id));
+  await deleteTemplateIds(idsToDelete);
+};
+
 const upsertTemplates = async (templates, user) => {
+  await deleteMissingTemplatesForScope({ templates, visibility: 'shared', user });
+  await deleteMissingTemplatesForScope({ templates, visibility: 'private', user });
+
   const url = `${SUPABASE_URL}/rest/v1/${TABLE_NAME}?on_conflict=id`;
   const payload = templates.map((t) => ({
     id: String(t.id || ''),
@@ -76,6 +123,7 @@ const upsertTemplates = async (templates, user) => {
     visibility: t.visibility === 'private' ? 'private' : 'shared',
     owner_id: t.visibility === 'private' ? (user?.id || null) : null
   }));
+  if (payload.length === 0) return;
   const res = await fetch(url, {
     method: 'POST',
     headers: {
