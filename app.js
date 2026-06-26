@@ -1245,6 +1245,27 @@ function App() {
     netProfitUsd: toNumber(calculations.sums?.netProfitUsd, 0)
   });
 
+  const buildOfferSheetsForSave = () => {
+    const activeSheetIdForSave = String(activeOfferSheetId || '');
+    const activeSnapshotForSave = buildOfferSheetSnapshot();
+    const activeSummaryForSave = buildOfferSheetSummary();
+    const list = Array.isArray(offerSheets) && offerSheets.length > 0
+      ? offerSheets
+      : DEFAULT_OFFER_SHEETS;
+    const sheets = activeSheetIdForSave
+      ? list.map((sheet) => (
+        String(sheet.id) === activeSheetIdForSave
+          ? { ...sheet, data: activeSnapshotForSave, summary: activeSummaryForSave, updatedAt: new Date().toISOString() }
+          : sheet
+      ))
+      : list;
+
+    return {
+      sheets,
+      activeSheetId: activeSheetIdForSave || (sheets[0]?.id || '')
+    };
+  };
+
   const applyOfferSheetSnapshot = (data) => {
     if (!data || typeof data !== 'object') return;
     isApplyingSnapshotRef.current = true;
@@ -1352,8 +1373,11 @@ function App() {
     const loadedSheets = Array.isArray(data.offerSheets) && data.offerSheets.length > 0
       ? data.offerSheets
       : DEFAULT_OFFER_SHEETS;
-    const loadedActiveSheetId = typeof data.activeOfferSheetId === 'string'
+    const requestedActiveSheetId = typeof data.activeOfferSheetId === 'string'
       ? data.activeOfferSheetId
+      : loadedSheets[0].id;
+    const loadedActiveSheetId = loadedSheets.some((sheet) => String(sheet.id) === String(requestedActiveSheetId))
+      ? requestedActiveSheetId
       : loadedSheets[0].id;
     setOfferSheets(loadedSheets);
     setActiveOfferSheetId(loadedActiveSheetId);
@@ -1399,6 +1423,17 @@ function App() {
     } else {
       setAutoMountingQuantity(true);
     }
+    const loadedSheets = Array.isArray(data.offerSheets) && data.offerSheets.length > 0
+      ? data.offerSheets
+      : DEFAULT_OFFER_SHEETS;
+    const requestedActiveSheetId = typeof data.activeOfferSheetId === 'string'
+      ? data.activeOfferSheetId
+      : loadedSheets[0].id;
+    const loadedActiveSheetId = loadedSheets.some((sheet) => String(sheet.id) === String(requestedActiveSheetId))
+      ? requestedActiveSheetId
+      : loadedSheets[0].id;
+    setOfferSheets(loadedSheets);
+    setActiveOfferSheetId(loadedActiveSheetId);
     setSelectedTemplateId(String(template?.id || ""));
     setTimeout(() => { isApplyingSnapshotRef.current = false; }, 0);
   };
@@ -1415,20 +1450,7 @@ function App() {
     rememberProjectCatalog(equipmentGroups);
     await persistProductsCatalog(productLastValues);
 
-    const activeSheetIdForSave = String(activeOfferSheetId || '');
-    const activeSnapshotForSave = buildOfferSheetSnapshot();
-    const activeSummaryForSave = buildOfferSheetSummary();
-    const offerSheetsForSave = (() => {
-      const list = Array.isArray(offerSheets) && offerSheets.length > 0
-        ? offerSheets
-        : DEFAULT_OFFER_SHEETS;
-      if (!activeSheetIdForSave) return list;
-      return list.map((sheet) => (
-        String(sheet.id) === activeSheetIdForSave
-          ? { ...sheet, data: activeSnapshotForSave, summary: activeSummaryForSave, updatedAt: new Date().toISOString() }
-          : sheet
-      ));
-    })();
+    const { sheets: offerSheetsForSave, activeSheetId: activeSheetIdForSave } = buildOfferSheetsForSave();
 
     const payload = {
       schemaVersion: 1,
@@ -1519,6 +1541,7 @@ function App() {
     const safeName = templateName.trim() || `Шаблон ${new Date().toLocaleDateString('uk-UA')}`;
     const id = selectedTemplateId || String(Date.now());
     rememberProjectCatalog(equipmentGroups);
+    const { sheets: offerSheetsForSave, activeSheetId: activeSheetIdForSave } = buildOfferSheetsForSave();
 
     const payload = {
       id,
@@ -1546,7 +1569,9 @@ function App() {
         clientDiscountScope,
         taxMode,
         groupSettings,
-        autoMountingQuantity
+        autoMountingQuantity,
+        offerSheets: offerSheetsForSave,
+        activeOfferSheetId: activeSheetIdForSave
       }
     };
 
@@ -1568,6 +1593,7 @@ function App() {
     const safeName = templateName.trim() || `Шаблон ${new Date().toLocaleDateString('uk-UA')}`;
     const id = String(Date.now());
     rememberProjectCatalog(equipmentGroups);
+    const { sheets: offerSheetsForSave, activeSheetId: activeSheetIdForSave } = buildOfferSheetsForSave();
 
     const payload = {
       id,
@@ -1595,7 +1621,9 @@ function App() {
         clientDiscountScope,
         taxMode,
         groupSettings,
-        autoMountingQuantity
+        autoMountingQuantity,
+        offerSheets: offerSheetsForSave,
+        activeOfferSheetId: activeSheetIdForSave
       }
     };
 
