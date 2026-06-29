@@ -106,8 +106,31 @@ const DEFAULT_DOCUMENT_DETAILS = {
   contractFopName: "",
   contractNumber: "",
   contractDate: "",
-  advanceUsd: 0,
-  advanceUah: 0
+  advances: []
+};
+const createDocumentAdvance = (overrides = {}) => ({
+  id: overrides.id || `advance_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+  date: overrides.date || "",
+  usd: toNumber(overrides.usd ?? overrides.advanceUsd, 0),
+  uah: toNumber(overrides.uah ?? overrides.advanceUah, 0),
+  note: overrides.note || ""
+});
+const normalizeDocumentDetails = (details = {}) => {
+  const source = details && typeof details === 'object' ? details : {};
+  const explicitAdvances = Array.isArray(source.advances)
+    ? source.advances.map((advance) => createDocumentAdvance(advance))
+    : [];
+  const legacyAdvanceUsd = toNumber(source.advanceUsd, 0);
+  const legacyAdvanceUah = toNumber(source.advanceUah, 0);
+  const migratedAdvances = explicitAdvances.length > 0
+    ? explicitAdvances
+    : ((legacyAdvanceUsd > 0 || legacyAdvanceUah > 0) ? [createDocumentAdvance({ usd: legacyAdvanceUsd, uah: legacyAdvanceUah, note: "Аванс" })] : []);
+
+  return {
+    ...DEFAULT_DOCUMENT_DETAILS,
+    ...source,
+    advances: migratedAdvances
+  };
 };
 const DEFAULT_OFFER_PURPOSE = "для власних потреб";
 const DEFAULT_COVER_SYSTEM_NAME = "";
@@ -557,10 +580,7 @@ function App() {
 
   const [projectName, setProjectName] = useState("");
   const [currentProjectFolderName, setCurrentProjectFolderName] = useState(() => getSaved('solar_currentProjectFolderName', ''));
-  const [documentDetails, setDocumentDetails] = useState(() => ({
-    ...DEFAULT_DOCUMENT_DETAILS,
-    ...(getSaved('solar_documentDetails', {}) || {})
-  }));
+  const [documentDetails, setDocumentDetails] = useState(() => normalizeDocumentDetails(getSaved('solar_documentDetails', DEFAULT_DOCUMENT_DETAILS)));
   const [documentDetailsCollapsed, setDocumentDetailsCollapsed] = useState(() => getSaved('solar_documentDetailsCollapsed', false));
   const [projectType, setProjectType] = useState(() => getSaved('solar_projectType', 'commercial'));
   const [showNewProjectDialog, setShowNewProjectDialog] = useState(false);
@@ -1306,7 +1326,7 @@ function App() {
         ? data.selectedManagerId
         : loadedManagers[0].id
     );
-    setDocumentDetails({ ...DEFAULT_DOCUMENT_DETAILS, ...(data.documentDetails && typeof data.documentDetails === 'object' ? data.documentDetails : {}) });
+    setDocumentDetails(normalizeDocumentDetails(data.documentDetails));
     setEquipmentGroups(orderEquipmentGroups(data.equipmentGroups && typeof data.equipmentGroups === 'object' ? data.equipmentGroups : createDefaultGroups()));
     setOtherExpenses(Array.isArray(data.otherExpenses) ? cloneList(data.otherExpenses) : cloneList(DEFAULT_OTHER_EXPENSES));
     setWorkItems(Array.isArray(data.workItems) ? cloneList(data.workItems) : cloneList(DEFAULT_WORK_ITEMS));
@@ -1365,7 +1385,7 @@ function App() {
     setInstallPercent(data.installPercent ?? 15);
     setRates(data.rates && typeof data.rates === 'object' ? data.rates : DEFAULT_RATES);
     setClientInfo(data.clientInfo && typeof data.clientInfo === 'object' ? data.clientInfo : DEFAULT_CLIENT_INFO);
-    setDocumentDetails({ ...DEFAULT_DOCUMENT_DETAILS, ...(data.documentDetails && typeof data.documentDetails === 'object' ? data.documentDetails : {}) });
+    setDocumentDetails(normalizeDocumentDetails(data.documentDetails));
     setManagerCommissionRate(data.managerCommissionRate ?? 10);
     setClientDiscountPercent(data.clientDiscountPercent ?? 0);
     setClientDiscountScope(data.clientDiscountScope || 'full');
@@ -1674,7 +1694,7 @@ function App() {
     setRates({ ...DEFAULT_RATES });
     setModulePower(550);
     setClientInfo({ ...DEFAULT_CLIENT_INFO });
-    setDocumentDetails({ ...DEFAULT_DOCUMENT_DETAILS });
+    setDocumentDetails(normalizeDocumentDetails());
     let nextEquipmentGroups = createDefaultGroups();
     let nextGroupSettings = createDefaultGroupSettings();
 
@@ -3180,19 +3200,6 @@ function App() {
   const discountUsdParts = splitMoneyParts(calculations.sums.discountUsd || 0);
   const discountUahParts = splitMoneyParts((calculations.sums.discountUsd || 0) * toNumber(rates.usd, 0));
   const hasOfferDiscount = toNumber(calculations.sums.discountPercent, 0) > 0;
-  const normalizedDocumentDetails = { ...DEFAULT_DOCUMENT_DETAILS, ...(documentDetails || {}) };
-  const advanceUsdRaw = Math.max(0, toNumber(normalizedDocumentDetails.advanceUsd, 0));
-  const advanceUahRaw = Math.max(0, toNumber(normalizedDocumentDetails.advanceUah, 0));
-  const usdRateForAdvance = Math.max(0.000001, toNumber(rates.usd, 0));
-  const advanceTotalUsd = advanceUsdRaw + (advanceUahRaw / usdRateForAdvance);
-  const advanceTotalUah = advanceUahRaw + (advanceUsdRaw * usdRateForAdvance);
-  const remainingUsd = Math.max(0, toNumber(calculations.sums.finalTotalWithDiscountUsd, 0) - advanceTotalUsd);
-  const remainingUah = Math.max(0, toNumber(calculations.sums.finalTotalWithDiscountUah, 0) - advanceTotalUah);
-  const hasAdvance = advanceUsdRaw > 0 || advanceUahRaw > 0;
-  const advanceUsdParts = splitMoneyParts(advanceTotalUsd);
-  const advanceUahParts = splitMoneyParts(advanceTotalUah);
-  const remainingUsdParts = splitMoneyParts(remainingUsd);
-  const remainingUahParts = splitMoneyParts(remainingUah);
   const formatDocumentDate = (value) => {
     const raw = String(value || '').trim();
     if (!raw) return '';
@@ -3200,6 +3207,38 @@ function App() {
     const parsed = new Date(raw);
     return Number.isNaN(parsed.getTime()) ? raw : parsed.toLocaleDateString('uk-UA');
   };
+  const normalizedDocumentDetails = normalizeDocumentDetails(documentDetails);
+  const documentAdvances = Array.isArray(normalizedDocumentDetails.advances) ? normalizedDocumentDetails.advances : [];
+  const usdRateForAdvance = Math.max(0.000001, toNumber(rates.usd, 0));
+  const advanceRowsForPrint = documentAdvances.map((advance, idx) => {
+    const usd = Math.max(0, toNumber(advance.usd, 0));
+    const uah = Math.max(0, toNumber(advance.uah, 0));
+    const dateText = formatDocumentDate(advance.date);
+    const noteText = String(advance.note || '').trim();
+    const details = [dateText ? `від ${dateText}` : '', noteText].filter(Boolean).join(' · ');
+    return {
+      ...advance,
+      usd,
+      uah,
+      totalUsd: usd + (uah / usdRateForAdvance),
+      totalUah: uah + (usd * usdRateForAdvance),
+      label: `АВАНС ${idx + 1}${details ? ` (${details})` : ''}:`
+    };
+  }).filter((advance) => (
+    String(advance.date || '').trim() ||
+    String(advance.note || '').trim() ||
+    advance.usd > 0 ||
+    advance.uah > 0
+  ));
+  const advanceTotalUsd = advanceRowsForPrint.reduce((acc, advance) => acc + toNumber(advance.totalUsd, 0), 0);
+  const advanceTotalUah = advanceRowsForPrint.reduce((acc, advance) => acc + toNumber(advance.totalUah, 0), 0);
+  const remainingUsd = Math.max(0, toNumber(calculations.sums.finalTotalWithDiscountUsd, 0) - advanceTotalUsd);
+  const remainingUah = Math.max(0, toNumber(calculations.sums.finalTotalWithDiscountUah, 0) - advanceTotalUah);
+  const hasAdvance = advanceRowsForPrint.length > 0 && (advanceTotalUsd > 0 || advanceTotalUah > 0);
+  const advanceUsdParts = splitMoneyParts(advanceTotalUsd);
+  const advanceUahParts = splitMoneyParts(advanceTotalUah);
+  const remainingUsdParts = splitMoneyParts(remainingUsd);
+  const remainingUahParts = splitMoneyParts(remainingUah);
   const documentContractLine = (() => {
     const parts = [];
     const contractNumber = String(normalizedDocumentDetails.contractNumber || '').trim();
@@ -3210,6 +3249,35 @@ function App() {
     if (fopName) parts.push(`Виконавець: ${fopName}`);
     return parts.join(' ');
   })();
+  const addDocumentAdvance = () => {
+    setDocumentDetails((prev) => {
+      const normalized = normalizeDocumentDetails(prev);
+      return {
+        ...normalized,
+        advances: [...normalized.advances, createDocumentAdvance()]
+      };
+    });
+  };
+  const updateDocumentAdvance = (id, patch) => {
+    setDocumentDetails((prev) => {
+      const normalized = normalizeDocumentDetails(prev);
+      return {
+        ...normalized,
+        advances: normalized.advances.map((advance) => (
+          advance.id === id ? { ...advance, ...patch } : advance
+        ))
+      };
+    });
+  };
+  const removeDocumentAdvance = (id) => {
+    setDocumentDetails((prev) => {
+      const normalized = normalizeDocumentDetails(prev);
+      return {
+        ...normalized,
+        advances: normalized.advances.filter((advance) => advance.id !== id)
+      };
+    });
+  };
   const showUsdInPrint = printCurrencyMode !== 'uah';
   const showUahInPrint = printCurrencyMode !== 'usd';
   const solarPowerKw = toNumber(calculations.stationPowerW, 0) / 1000;
@@ -3899,27 +3967,75 @@ function App() {
               placeholder="дд.мм.рррр"
             />
           </div>
-          <div className="input-group" style={{margin: 0}}>
-            <label>Аванс, $</label>
-            <input
-              type="number"
-              min="0"
-              step="0.01"
-              value={documentDetails.advanceUsd ?? 0}
-              onChange={(e) => setDocumentDetails({...documentDetails, advanceUsd: parseNumberInput(e.target.value)})}
-              placeholder="0"
-            />
-          </div>
-          <div className="input-group" style={{margin: 0}}>
-            <label>Аванс, грн</label>
-            <input
-              type="number"
-              min="0"
-              step="0.01"
-              value={documentDetails.advanceUah ?? 0}
-              onChange={(e) => setDocumentDetails({...documentDetails, advanceUah: parseNumberInput(e.target.value)})}
-              placeholder="0"
-            />
+          <div className="input-group" style={{margin: 0, gridColumn: '1 / -1'}}>
+            <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', marginBottom: '0.5rem'}}>
+              <label style={{margin: 0}}>Аванси</label>
+              <button
+                type="button"
+                className="secondary"
+                style={{background: '#0f766e', padding: '0.45rem 0.8rem'}}
+                onClick={addDocumentAdvance}
+              >
+                + Додати аванс
+              </button>
+            </div>
+            <div style={{display: 'grid', gap: '0.55rem'}}>
+              {(normalizedDocumentDetails.advances || []).length === 0 && (
+                <div style={{color: 'var(--text-muted)', fontSize: '0.9rem'}}>Авансів ще немає</div>
+              )}
+              {(normalizedDocumentDetails.advances || []).map((advance, idx) => (
+                <div key={advance.id} style={{display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1.4fr auto', gap: '0.5rem', alignItems: 'end'}}>
+                  <div>
+                    <label>Дата авансу {idx + 1}</label>
+                    <input
+                      type="text"
+                      value={advance.date || ''}
+                      onChange={(e) => updateDocumentAdvance(advance.id, { date: e.target.value })}
+                      placeholder="дд.мм.рррр"
+                    />
+                  </div>
+                  <div>
+                    <label>Сума, $</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={advance.usd ?? 0}
+                      onChange={(e) => updateDocumentAdvance(advance.id, { usd: parseNumberInput(e.target.value) })}
+                      placeholder="0"
+                    />
+                  </div>
+                  <div>
+                    <label>Сума, грн</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={advance.uah ?? 0}
+                      onChange={(e) => updateDocumentAdvance(advance.id, { uah: parseNumberInput(e.target.value) })}
+                      placeholder="0"
+                    />
+                  </div>
+                  <div>
+                    <label>Примітка</label>
+                    <input
+                      type="text"
+                      value={advance.note || ''}
+                      onChange={(e) => updateDocumentAdvance(advance.id, { note: e.target.value })}
+                      placeholder="Напр. після договору"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    className="danger"
+                    style={{padding: '0.55rem 0.75rem', minHeight: '42px'}}
+                    onClick={() => removeDocumentAdvance(advance.id)}
+                  >
+                    Видалити
+                  </button>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
         )}
@@ -5660,9 +5776,28 @@ function App() {
                        </td>
                      )}
                   </tr>
-                  {printMode === 'invoice' && hasAdvance && (
+                  {printMode === 'invoice' && hasAdvance && advanceRowsForPrint.map((advance) => {
+                    const rowUsdParts = splitMoneyParts(advance.totalUsd);
+                    const rowUahParts = splitMoneyParts(advance.totalUah);
+                    return (
+                      <tr key={`advance-${advance.id}`} className="print-total-row">
+                        <td colSpan="4" className="text-right" style={{fontWeight: 'bold', fontSize: '0.9rem'}}>{advance.label}</td>
+                        {showUsdInPrint && (
+                          <td colSpan="2" className="text-right" style={{fontWeight: 'bold', fontSize: '0.9rem', whiteSpace: 'nowrap', lineHeight: 1.1}}>
+                            ${rowUsdParts.whole},{rowUsdParts.frac}
+                          </td>
+                        )}
+                        {showUahInPrint && (
+                          <td colSpan="2" className="text-right" style={{fontWeight: 'bold', fontSize: '0.9rem', whiteSpace: 'nowrap', lineHeight: 1.1}}>
+                            {rowUahParts.whole},{rowUahParts.frac} грн
+                          </td>
+                        )}
+                      </tr>
+                    );
+                  })}
+                  {printMode === 'invoice' && hasAdvance && advanceRowsForPrint.length > 1 && (
                     <tr className="print-total-row">
-                      <td colSpan="4" className="text-right" style={{fontWeight: 'bold', fontSize: '0.95rem'}}>АВАНС:</td>
+                      <td colSpan="4" className="text-right" style={{fontWeight: 'bold', fontSize: '0.95rem'}}>УСЬОГО АВАНС:</td>
                       {showUsdInPrint && (
                         <td colSpan="2" className="text-right" style={{fontWeight: 'bold', fontSize: '0.95rem', whiteSpace: 'nowrap', lineHeight: 1.1}}>
                           ${advanceUsdParts.whole},{advanceUsdParts.frac}

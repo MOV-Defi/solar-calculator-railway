@@ -316,13 +316,6 @@ async function exportToExcelFile({
     const orderedGroupKeys = buildExportGroupOrder(safeGroups);
     const safeDocumentDetails = documentDetails && typeof documentDetails === 'object' ? documentDetails : {};
     const usdRateForAdvance = Math.max(0.000001, toNumber(rates?.usd, 0));
-    const advanceUsdRaw = Math.max(0, toNumber(safeDocumentDetails.advanceUsd, 0));
-    const advanceUahRaw = Math.max(0, toNumber(safeDocumentDetails.advanceUah, 0));
-    const advanceTotalUsd = advanceUsdRaw + (advanceUahRaw / usdRateForAdvance);
-    const advanceTotalUah = advanceUahRaw + (advanceUsdRaw * usdRateForAdvance);
-    const remainingUsd = Math.max(0, toNumber(calculations?.sums?.finalTotalWithDiscountUsd, 0) - advanceTotalUsd);
-    const remainingUah = Math.max(0, toNumber(calculations?.sums?.finalTotalWithDiscountUah, 0) - advanceTotalUah);
-    const hasAdvance = advanceUsdRaw > 0 || advanceUahRaw > 0;
     const formatContractDate = (value) => {
       const raw = String(value || '').trim();
       if (!raw) return '';
@@ -330,6 +323,37 @@ async function exportToExcelFile({
       const parsed = new Date(raw);
       return Number.isNaN(parsed.getTime()) ? raw : parsed.toLocaleDateString('uk-UA');
     };
+    const normalizeAdvanceRows = () => {
+      const explicitAdvances = Array.isArray(safeDocumentDetails.advances)
+        ? safeDocumentDetails.advances
+        : [];
+      const legacyAdvanceUsd = toNumber(safeDocumentDetails.advanceUsd, 0);
+      const legacyAdvanceUah = toNumber(safeDocumentDetails.advanceUah, 0);
+      const sourceAdvances = explicitAdvances.length > 0
+        ? explicitAdvances
+        : ((legacyAdvanceUsd > 0 || legacyAdvanceUah > 0) ? [{ usd: legacyAdvanceUsd, uah: legacyAdvanceUah, note: 'Аванс' }] : []);
+
+      return sourceAdvances.map((advance, idx) => {
+        const usd = Math.max(0, toNumber(advance?.usd ?? advance?.advanceUsd, 0));
+        const uah = Math.max(0, toNumber(advance?.uah ?? advance?.advanceUah, 0));
+        const dateText = formatContractDate(advance?.date);
+        const noteText = String(advance?.note || '').trim();
+        const details = [dateText ? `від ${dateText}` : '', noteText].filter(Boolean).join(' · ');
+        return {
+          usd,
+          uah,
+          totalUsd: usd + (uah / usdRateForAdvance),
+          totalUah: uah + (usd * usdRateForAdvance),
+          label: `Аванс ${idx + 1}${details ? ` (${details})` : ''}:`
+        };
+      }).filter((advance) => advance.usd > 0 || advance.uah > 0);
+    };
+    const advanceRows = normalizeAdvanceRows();
+    const advanceTotalUsd = advanceRows.reduce((acc, advance) => acc + toNumber(advance.totalUsd, 0), 0);
+    const advanceTotalUah = advanceRows.reduce((acc, advance) => acc + toNumber(advance.totalUah, 0), 0);
+    const remainingUsd = Math.max(0, toNumber(calculations?.sums?.finalTotalWithDiscountUsd, 0) - advanceTotalUsd);
+    const remainingUah = Math.max(0, toNumber(calculations?.sums?.finalTotalWithDiscountUah, 0) - advanceTotalUah);
+    const hasAdvance = advanceRows.length > 0 && (advanceTotalUsd > 0 || advanceTotalUah > 0);
     const buildContractLine = () => {
       const parts = [];
       const contractNumber = String(safeDocumentDetails.contractNumber || '').trim();
@@ -652,7 +676,12 @@ async function exportToExcelFile({
     };
 
     if (hasAdvance) {
-      addInvoiceSummaryLine('Аванс:', advanceTotalUsd, advanceTotalUah, true);
+      advanceRows.forEach((advance) => {
+        addInvoiceSummaryLine(advance.label, advance.totalUsd, advance.totalUah, false);
+      });
+      if (advanceRows.length > 1) {
+        addInvoiceSummaryLine('Усього аванс:', advanceTotalUsd, advanceTotalUah, true);
+      }
       addInvoiceSummaryLine('Залишок до сплати:', remainingUsd, remainingUah, true);
     }
     addInvoiceSummaryLine('Загальна маржа (до податків):', calculations?.sums?.grossMarginBeforeTaxesUsd, toNumber(calculations?.sums?.grossMarginBeforeTaxesUsd, 0) * toNumber(rates?.usd, 1), true);
