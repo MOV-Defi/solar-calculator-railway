@@ -101,6 +101,14 @@ const HV_BATTERY_BUNDLE_MAP = {
 };
 const DEFAULT_RATES = { eur: 51.35, usd: 44.10 };
 const DEFAULT_CLIENT_INFO = { name: "", address: "" };
+const DEFAULT_DOCUMENT_DETAILS = {
+  specNumber: "",
+  contractFopName: "",
+  contractNumber: "",
+  contractDate: "",
+  advanceUsd: 0,
+  advanceUah: 0
+};
 const DEFAULT_OFFER_PURPOSE = "для власних потреб";
 const DEFAULT_COVER_SYSTEM_NAME = "";
 const DEFAULT_QR_URL = "https://www.solarservice.pro/";
@@ -549,6 +557,10 @@ function App() {
 
   const [projectName, setProjectName] = useState("");
   const [currentProjectFolderName, setCurrentProjectFolderName] = useState(() => getSaved('solar_currentProjectFolderName', ''));
+  const [documentDetails, setDocumentDetails] = useState(() => ({
+    ...DEFAULT_DOCUMENT_DETAILS,
+    ...(getSaved('solar_documentDetails', {}) || {})
+  }));
   const [projectType, setProjectType] = useState(() => getSaved('solar_projectType', 'commercial'));
   const [showNewProjectDialog, setShowNewProjectDialog] = useState(false);
   const [showQuickCalc, setShowQuickCalc] = useState(false);
@@ -1202,6 +1214,7 @@ function App() {
     coverQrUrl,
     managerContacts,
     selectedManagerId,
+    documentDetails,
     equipmentGroups,
     otherExpenses,
     workItems,
@@ -1292,6 +1305,7 @@ function App() {
         ? data.selectedManagerId
         : loadedManagers[0].id
     );
+    setDocumentDetails({ ...DEFAULT_DOCUMENT_DETAILS, ...(data.documentDetails && typeof data.documentDetails === 'object' ? data.documentDetails : {}) });
     setEquipmentGroups(orderEquipmentGroups(data.equipmentGroups && typeof data.equipmentGroups === 'object' ? data.equipmentGroups : createDefaultGroups()));
     setOtherExpenses(Array.isArray(data.otherExpenses) ? cloneList(data.otherExpenses) : cloneList(DEFAULT_OTHER_EXPENSES));
     setWorkItems(Array.isArray(data.workItems) ? cloneList(data.workItems) : cloneList(DEFAULT_WORK_ITEMS));
@@ -1350,6 +1364,7 @@ function App() {
     setInstallPercent(data.installPercent ?? 15);
     setRates(data.rates && typeof data.rates === 'object' ? data.rates : DEFAULT_RATES);
     setClientInfo(data.clientInfo && typeof data.clientInfo === 'object' ? data.clientInfo : DEFAULT_CLIENT_INFO);
+    setDocumentDetails({ ...DEFAULT_DOCUMENT_DETAILS, ...(data.documentDetails && typeof data.documentDetails === 'object' ? data.documentDetails : {}) });
     setManagerCommissionRate(data.managerCommissionRate ?? 10);
     setClientDiscountPercent(data.clientDiscountPercent ?? 0);
     setClientDiscountScope(data.clientDiscountScope || 'full');
@@ -1658,6 +1673,7 @@ function App() {
     setRates({ ...DEFAULT_RATES });
     setModulePower(550);
     setClientInfo({ ...DEFAULT_CLIENT_INFO });
+    setDocumentDetails({ ...DEFAULT_DOCUMENT_DETAILS });
     let nextEquipmentGroups = createDefaultGroups();
     let nextGroupSettings = createDefaultGroupSettings();
 
@@ -1914,6 +1930,7 @@ function App() {
         mode,
         projectType,
         clientInfo,
+        documentDetails,
         rates: {
           eur: toNumber(rates.eur, 0),
           usd: toNumber(rates.usd, 0)
@@ -2555,6 +2572,7 @@ function App() {
   // Auto-save current state
   useEffect(() => { localStorage.setItem('solar_rates', JSON.stringify(rates)); }, [rates]);
   useEffect(() => { localStorage.setItem('solar_clientInfo', JSON.stringify(clientInfo)); }, [clientInfo]);
+  useEffect(() => { localStorage.setItem('solar_documentDetails', JSON.stringify(documentDetails)); }, [documentDetails]);
   useEffect(() => { localStorage.setItem('solar_offerPurpose', JSON.stringify(offerPurpose)); }, [offerPurpose]);
   useEffect(() => { localStorage.setItem('solar_coverSystemName', JSON.stringify(coverSystemName)); }, [coverSystemName]);
   useEffect(() => { localStorage.setItem('solar_coverPageType', JSON.stringify(coverPageType)); }, [coverPageType]);
@@ -3160,6 +3178,36 @@ function App() {
   const discountUsdParts = splitMoneyParts(calculations.sums.discountUsd || 0);
   const discountUahParts = splitMoneyParts((calculations.sums.discountUsd || 0) * toNumber(rates.usd, 0));
   const hasOfferDiscount = toNumber(calculations.sums.discountPercent, 0) > 0;
+  const normalizedDocumentDetails = { ...DEFAULT_DOCUMENT_DETAILS, ...(documentDetails || {}) };
+  const advanceUsdRaw = Math.max(0, toNumber(normalizedDocumentDetails.advanceUsd, 0));
+  const advanceUahRaw = Math.max(0, toNumber(normalizedDocumentDetails.advanceUah, 0));
+  const usdRateForAdvance = Math.max(0.000001, toNumber(rates.usd, 0));
+  const advanceTotalUsd = advanceUsdRaw + (advanceUahRaw / usdRateForAdvance);
+  const advanceTotalUah = advanceUahRaw + (advanceUsdRaw * usdRateForAdvance);
+  const remainingUsd = Math.max(0, toNumber(calculations.sums.finalTotalWithDiscountUsd, 0) - advanceTotalUsd);
+  const remainingUah = Math.max(0, toNumber(calculations.sums.finalTotalWithDiscountUah, 0) - advanceTotalUah);
+  const hasAdvance = advanceUsdRaw > 0 || advanceUahRaw > 0;
+  const advanceUsdParts = splitMoneyParts(advanceTotalUsd);
+  const advanceUahParts = splitMoneyParts(advanceTotalUah);
+  const remainingUsdParts = splitMoneyParts(remainingUsd);
+  const remainingUahParts = splitMoneyParts(remainingUah);
+  const formatDocumentDate = (value) => {
+    const raw = String(value || '').trim();
+    if (!raw) return '';
+    if (/^\d{2}\.\d{2}\.\d{4}$/.test(raw)) return raw;
+    const parsed = new Date(raw);
+    return Number.isNaN(parsed.getTime()) ? raw : parsed.toLocaleDateString('uk-UA');
+  };
+  const documentContractLine = (() => {
+    const parts = [];
+    const contractNumber = String(normalizedDocumentDetails.contractNumber || '').trim();
+    const contractDate = formatDocumentDate(normalizedDocumentDetails.contractDate);
+    const fopName = String(normalizedDocumentDetails.contractFopName || '').trim();
+    if (contractNumber) parts.push(`до договору № ${contractNumber}`);
+    if (contractDate) parts.push(`від ${contractDate} р.`);
+    if (fopName) parts.push(`з ${fopName}`);
+    return parts.join(' ');
+  })();
   const showUsdInPrint = printCurrencyMode !== 'uah';
   const showUahInPrint = printCurrencyMode !== 'usd';
   const solarPowerKw = toNumber(calculations.stationPowerW, 0) / 1000;
@@ -3796,6 +3844,67 @@ function App() {
         <div className="input-group">
           <label>Адреса об'єкта</label>
           <input type="text" value={clientInfo.address} onChange={(e) => setClientInfo({...clientInfo, address: e.target.value})} placeholder="Введіть адресу встановлення..." />
+        </div>
+      </div>
+
+      <div className="card grid grid-cols-3" style={{marginTop: '-0.25rem'}}>
+        <div className="input-group">
+          <label>№ специфікації</label>
+          <input
+            type="text"
+            value={documentDetails.specNumber || ''}
+            onChange={(e) => setDocumentDetails({...documentDetails, specNumber: e.target.value})}
+            placeholder="Напр. 12/06"
+          />
+        </div>
+        <div className="input-group">
+          <label>ФОП / сторона договору</label>
+          <input
+            type="text"
+            value={documentDetails.contractFopName || ''}
+            onChange={(e) => setDocumentDetails({...documentDetails, contractFopName: e.target.value})}
+            placeholder="ФОП ..."
+          />
+        </div>
+        <div className="input-group">
+          <label>№ договору</label>
+          <input
+            type="text"
+            value={documentDetails.contractNumber || ''}
+            onChange={(e) => setDocumentDetails({...documentDetails, contractNumber: e.target.value})}
+            placeholder="Номер договору"
+          />
+        </div>
+        <div className="input-group">
+          <label>Дата договору</label>
+          <input
+            type="text"
+            value={documentDetails.contractDate || ''}
+            onChange={(e) => setDocumentDetails({...documentDetails, contractDate: e.target.value})}
+            placeholder="дд.мм.рррр"
+          />
+        </div>
+        <div className="input-group">
+          <label>Аванс, $</label>
+          <input
+            type="number"
+            min="0"
+            step="0.01"
+            value={documentDetails.advanceUsd ?? 0}
+            onChange={(e) => setDocumentDetails({...documentDetails, advanceUsd: parseNumberInput(e.target.value)})}
+            placeholder="0"
+          />
+        </div>
+        <div className="input-group">
+          <label>Аванс, грн</label>
+          <input
+            type="number"
+            min="0"
+            step="0.01"
+            value={documentDetails.advanceUah ?? 0}
+            onChange={(e) => setDocumentDetails({...documentDetails, advanceUah: parseNumberInput(e.target.value)})}
+            placeholder="0"
+          />
         </div>
       </div>
 
@@ -5342,7 +5451,8 @@ function App() {
                   </div>
                   <div className="invoice-orange-line"></div>
                   <h1 className="invoice-title">СПЕЦИФІКАЦІЯ ЗАМОВЛЕННЯ</h1>
-                  <div className="invoice-doc-meta">№ _______ &nbsp;&nbsp; від {new Date().toLocaleDateString('uk-UA')} р.</div>
+                  <div className="invoice-doc-meta">№ {String(normalizedDocumentDetails.specNumber || '').trim() || '_______'} &nbsp;&nbsp; від {new Date().toLocaleDateString('uk-UA')} р.</div>
+                  {documentContractLine && <div className="invoice-doc-meta">{documentContractLine}</div>}
                   <div className="invoice-orange-line" style={{marginBottom: '0.8rem'}}></div>
                 </>
               ) : (
@@ -5533,6 +5643,36 @@ function App() {
                        </td>
                      )}
                   </tr>
+                  {printMode === 'invoice' && hasAdvance && (
+                    <tr className="print-total-row">
+                      <td colSpan="4" className="text-right" style={{fontWeight: 'bold', fontSize: '0.95rem'}}>АВАНС:</td>
+                      {showUsdInPrint && (
+                        <td colSpan="2" className="text-right" style={{fontWeight: 'bold', fontSize: '0.95rem', whiteSpace: 'nowrap', lineHeight: 1.1}}>
+                          ${advanceUsdParts.whole},{advanceUsdParts.frac}
+                        </td>
+                      )}
+                      {showUahInPrint && (
+                        <td colSpan="2" className="text-right" style={{fontWeight: 'bold', fontSize: '0.95rem', whiteSpace: 'nowrap', lineHeight: 1.1}}>
+                          {advanceUahParts.whole},{advanceUahParts.frac} грн
+                        </td>
+                      )}
+                    </tr>
+                  )}
+                  {printMode === 'invoice' && hasAdvance && (
+                    <tr className="print-total-row">
+                      <td colSpan="4" className="text-right" style={{fontWeight: 'bold', fontSize: '0.98rem'}}>ЗАЛИШОК ДО СПЛАТИ:</td>
+                      {showUsdInPrint && (
+                        <td colSpan="2" className="text-right" style={{fontWeight: 'bold', fontSize: '0.98rem', whiteSpace: 'nowrap', lineHeight: 1.1}}>
+                          ${remainingUsdParts.whole},{remainingUsdParts.frac}
+                        </td>
+                      )}
+                      {showUahInPrint && (
+                        <td colSpan="2" className="text-right" style={{fontWeight: 'bold', fontSize: '0.98rem', whiteSpace: 'nowrap', lineHeight: 1.1}}>
+                          {remainingUahParts.whole},{remainingUahParts.frac} грн
+                        </td>
+                      )}
+                    </tr>
+                  )}
                </tfoot>
             </table>
             {printMode === 'offer' && includeManagerInOffer && <OfferManagerBar />}

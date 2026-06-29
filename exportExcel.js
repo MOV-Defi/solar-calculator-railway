@@ -290,6 +290,7 @@ async function exportToExcelFile({
   mode,
   projectType = 'project',
   clientInfo,
+  documentDetails = {},
   rates,
   modulePower,
   calculations,
@@ -313,6 +314,32 @@ async function exportToExcelFile({
     const safeProcessedWorkItems = Array.isArray(calculations?.processedWorkItems) ? calculations.processedWorkItems : [];
     const safeProcessedOtherExpenses = Array.isArray(calculations?.processedOtherExpenses) ? calculations.processedOtherExpenses : [];
     const orderedGroupKeys = buildExportGroupOrder(safeGroups);
+    const safeDocumentDetails = documentDetails && typeof documentDetails === 'object' ? documentDetails : {};
+    const usdRateForAdvance = Math.max(0.000001, toNumber(rates?.usd, 0));
+    const advanceUsdRaw = Math.max(0, toNumber(safeDocumentDetails.advanceUsd, 0));
+    const advanceUahRaw = Math.max(0, toNumber(safeDocumentDetails.advanceUah, 0));
+    const advanceTotalUsd = advanceUsdRaw + (advanceUahRaw / usdRateForAdvance);
+    const advanceTotalUah = advanceUahRaw + (advanceUsdRaw * usdRateForAdvance);
+    const remainingUsd = Math.max(0, toNumber(calculations?.sums?.finalTotalWithDiscountUsd, 0) - advanceTotalUsd);
+    const remainingUah = Math.max(0, toNumber(calculations?.sums?.finalTotalWithDiscountUah, 0) - advanceTotalUah);
+    const hasAdvance = advanceUsdRaw > 0 || advanceUahRaw > 0;
+    const formatContractDate = (value) => {
+      const raw = String(value || '').trim();
+      if (!raw) return '';
+      if (/^\d{2}\.\d{2}\.\d{4}$/.test(raw)) return raw;
+      const parsed = new Date(raw);
+      return Number.isNaN(parsed.getTime()) ? raw : parsed.toLocaleDateString('uk-UA');
+    };
+    const buildContractLine = () => {
+      const parts = [];
+      const contractNumber = String(safeDocumentDetails.contractNumber || '').trim();
+      const contractDate = formatContractDate(safeDocumentDetails.contractDate);
+      const fopName = String(safeDocumentDetails.contractFopName || '').trim();
+      if (contractNumber) parts.push(`до договору № ${contractNumber}`);
+      if (contractDate) parts.push(`від ${contractDate} р.`);
+      if (fopName) parts.push(`з ${fopName}`);
+      return parts.join(' ');
+    };
 
     if (typeof window.ExcelJS === 'undefined') {
       throw new Error('Бібліотека ExcelJS не завантажена. Спробуйте оновити сторінку.');
@@ -367,9 +394,17 @@ async function exportToExcelFile({
     sheet.getCell('D2').alignment = { horizontal: 'left', vertical: 'middle' };
 
     sheet.mergeCells('D3:H3');
-    sheet.getCell('D3').value = `№ _______     від  ${new Date().toLocaleDateString('uk-UA')} р.`;
+    sheet.getCell('D3').value = `№ ${String(safeDocumentDetails.specNumber || '').trim() || '_______'}     від  ${new Date().toLocaleDateString('uk-UA')} р.`;
     sheet.getCell('D3').font = { name: 'Arial', size: 10, color: { argb: 'FF666666' } };
     sheet.getCell('D3').alignment = { horizontal: 'left', vertical: 'bottom' };
+
+    const contractLine = buildContractLine();
+    if (contractLine) {
+      sheet.mergeCells('D4:H4');
+      sheet.getCell('D4').value = contractLine;
+      sheet.getCell('D4').font = { name: 'Arial', size: 10, color: { argb: 'FF666666' } };
+      sheet.getCell('D4').alignment = { horizontal: 'left', vertical: 'bottom' };
+    }
 
     sheet.getCell('A5').value = 'Замовник:';
     sheet.getCell('A5').font = { name: 'Arial', size: 11, bold: true, color: { argb: 'FF153772' } };
@@ -616,6 +651,10 @@ async function exportToExcelFile({
       row.getCell(8).font = { name: 'Arial', size: 10, bold: true };
     };
 
+    if (hasAdvance) {
+      addInvoiceSummaryLine('Аванс:', advanceTotalUsd, advanceTotalUah, true);
+      addInvoiceSummaryLine('Залишок до сплати:', remainingUsd, remainingUah, true);
+    }
     addInvoiceSummaryLine('Загальна маржа (до податків):', calculations?.sums?.grossMarginBeforeTaxesUsd, toNumber(calculations?.sums?.grossMarginBeforeTaxesUsd, 0) * toNumber(rates?.usd, 1), true);
     addInvoiceSummaryLine(`Комісія менеджера до податків (${toNumber(managerCommissionRate, 0)}%):`, calculations?.sums?.managerCommissionBeforeTaxesUsd, toNumber(calculations?.sums?.managerCommissionBeforeTaxesUsd, 0) * toNumber(rates?.usd, 1));
     addInvoiceSummaryLine('Чиста маржа до податків:', calculations?.sums?.netMarginBeforeTaxesUsd, toNumber(calculations?.sums?.netMarginBeforeTaxesUsd, 0) * toNumber(rates?.usd, 1), true);
