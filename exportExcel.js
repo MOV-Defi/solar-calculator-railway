@@ -337,7 +337,7 @@ async function exportToExcelFile({
       const fopName = String(safeDocumentDetails.contractFopName || '').trim();
       if (contractNumber) parts.push(`до договору № ${contractNumber}`);
       if (contractDate) parts.push(`від ${contractDate} р.`);
-      if (fopName) parts.push(`з ${fopName}`);
+      if (fopName) parts.push(`Виконавець: ${fopName}`);
       return parts.join(' ');
     };
 

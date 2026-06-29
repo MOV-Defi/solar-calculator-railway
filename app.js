@@ -3207,7 +3207,7 @@ function App() {
     const fopName = String(normalizedDocumentDetails.contractFopName || '').trim();
     if (contractNumber) parts.push(`до договору № ${contractNumber}`);
     if (contractDate) parts.push(`від ${contractDate} р.`);
-    if (fopName) parts.push(`з ${fopName}`);
+    if (fopName) parts.push(`Виконавець: ${fopName}`);
     return parts.join(' ');
   })();
   const showUsdInPrint = printCurrencyMode !== 'uah';
@@ -3873,12 +3873,12 @@ function App() {
             />
           </div>
           <div className="input-group" style={{margin: 0}}>
-            <label>ФОП / сторона договору</label>
+            <label>Наш ФОП / виконавець</label>
             <input
               type="text"
               value={documentDetails.contractFopName || ''}
               onChange={(e) => setDocumentDetails({...documentDetails, contractFopName: e.target.value})}
-              placeholder="ФОП ..."
+              placeholder="ФОП, який виступає від нас"
             />
           </div>
           <div className="input-group" style={{margin: 0}}>
