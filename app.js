@@ -561,6 +561,7 @@ function App() {
     ...DEFAULT_DOCUMENT_DETAILS,
     ...(getSaved('solar_documentDetails', {}) || {})
   }));
+  const [documentDetailsCollapsed, setDocumentDetailsCollapsed] = useState(() => getSaved('solar_documentDetailsCollapsed', false));
   const [projectType, setProjectType] = useState(() => getSaved('solar_projectType', 'commercial'));
   const [showNewProjectDialog, setShowNewProjectDialog] = useState(false);
   const [showQuickCalc, setShowQuickCalc] = useState(false);
@@ -2573,6 +2574,7 @@ function App() {
   useEffect(() => { localStorage.setItem('solar_rates', JSON.stringify(rates)); }, [rates]);
   useEffect(() => { localStorage.setItem('solar_clientInfo', JSON.stringify(clientInfo)); }, [clientInfo]);
   useEffect(() => { localStorage.setItem('solar_documentDetails', JSON.stringify(documentDetails)); }, [documentDetails]);
+  useEffect(() => { localStorage.setItem('solar_documentDetailsCollapsed', JSON.stringify(documentDetailsCollapsed)); }, [documentDetailsCollapsed]);
   useEffect(() => { localStorage.setItem('solar_offerPurpose', JSON.stringify(offerPurpose)); }, [offerPurpose]);
   useEffect(() => { localStorage.setItem('solar_coverSystemName', JSON.stringify(coverSystemName)); }, [coverSystemName]);
   useEffect(() => { localStorage.setItem('solar_coverPageType', JSON.stringify(coverPageType)); }, [coverPageType]);
@@ -3847,65 +3849,80 @@ function App() {
         </div>
       </div>
 
-      <div className="card grid grid-cols-3" style={{marginTop: '-0.25rem'}}>
-        <div className="input-group">
-          <label>№ специфікації</label>
-          <input
-            type="text"
-            value={documentDetails.specNumber || ''}
-            onChange={(e) => setDocumentDetails({...documentDetails, specNumber: e.target.value})}
-            placeholder="Напр. 12/06"
-          />
+      <div className="card" style={{marginTop: '-0.25rem'}}>
+        <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', marginBottom: documentDetailsCollapsed ? 0 : '0.75rem'}}>
+          <div style={{fontWeight: 800, color: 'var(--text-muted)', letterSpacing: '0.02em'}}>Реквізити специфікації</div>
+          <button
+            type="button"
+            className="secondary"
+            style={{background: '#334155', padding: '0.45rem 0.8rem'}}
+            onClick={() => setDocumentDetailsCollapsed((prev) => !prev)}
+          >
+            {documentDetailsCollapsed ? '▾ Розгорнути' : '▴ Згорнути'}
+          </button>
         </div>
-        <div className="input-group">
-          <label>ФОП / сторона договору</label>
-          <input
-            type="text"
-            value={documentDetails.contractFopName || ''}
-            onChange={(e) => setDocumentDetails({...documentDetails, contractFopName: e.target.value})}
-            placeholder="ФОП ..."
-          />
+        {!documentDetailsCollapsed && (
+        <div className="grid grid-cols-3" style={{gap: '0.75rem'}}>
+          <div className="input-group" style={{margin: 0}}>
+            <label>№ специфікації</label>
+            <input
+              type="text"
+              value={documentDetails.specNumber || ''}
+              onChange={(e) => setDocumentDetails({...documentDetails, specNumber: e.target.value})}
+              placeholder="Напр. 12/06"
+            />
+          </div>
+          <div className="input-group" style={{margin: 0}}>
+            <label>ФОП / сторона договору</label>
+            <input
+              type="text"
+              value={documentDetails.contractFopName || ''}
+              onChange={(e) => setDocumentDetails({...documentDetails, contractFopName: e.target.value})}
+              placeholder="ФОП ..."
+            />
+          </div>
+          <div className="input-group" style={{margin: 0}}>
+            <label>№ договору</label>
+            <input
+              type="text"
+              value={documentDetails.contractNumber || ''}
+              onChange={(e) => setDocumentDetails({...documentDetails, contractNumber: e.target.value})}
+              placeholder="Номер договору"
+            />
+          </div>
+          <div className="input-group" style={{margin: 0}}>
+            <label>Дата договору</label>
+            <input
+              type="text"
+              value={documentDetails.contractDate || ''}
+              onChange={(e) => setDocumentDetails({...documentDetails, contractDate: e.target.value})}
+              placeholder="дд.мм.рррр"
+            />
+          </div>
+          <div className="input-group" style={{margin: 0}}>
+            <label>Аванс, $</label>
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              value={documentDetails.advanceUsd ?? 0}
+              onChange={(e) => setDocumentDetails({...documentDetails, advanceUsd: parseNumberInput(e.target.value)})}
+              placeholder="0"
+            />
+          </div>
+          <div className="input-group" style={{margin: 0}}>
+            <label>Аванс, грн</label>
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              value={documentDetails.advanceUah ?? 0}
+              onChange={(e) => setDocumentDetails({...documentDetails, advanceUah: parseNumberInput(e.target.value)})}
+              placeholder="0"
+            />
+          </div>
         </div>
-        <div className="input-group">
-          <label>№ договору</label>
-          <input
-            type="text"
-            value={documentDetails.contractNumber || ''}
-            onChange={(e) => setDocumentDetails({...documentDetails, contractNumber: e.target.value})}
-            placeholder="Номер договору"
-          />
-        </div>
-        <div className="input-group">
-          <label>Дата договору</label>
-          <input
-            type="text"
-            value={documentDetails.contractDate || ''}
-            onChange={(e) => setDocumentDetails({...documentDetails, contractDate: e.target.value})}
-            placeholder="дд.мм.рррр"
-          />
-        </div>
-        <div className="input-group">
-          <label>Аванс, $</label>
-          <input
-            type="number"
-            min="0"
-            step="0.01"
-            value={documentDetails.advanceUsd ?? 0}
-            onChange={(e) => setDocumentDetails({...documentDetails, advanceUsd: parseNumberInput(e.target.value)})}
-            placeholder="0"
-          />
-        </div>
-        <div className="input-group">
-          <label>Аванс, грн</label>
-          <input
-            type="number"
-            min="0"
-            step="0.01"
-            value={documentDetails.advanceUah ?? 0}
-            onChange={(e) => setDocumentDetails({...documentDetails, advanceUah: parseNumberInput(e.target.value)})}
-            placeholder="0"
-          />
-        </div>
+        )}
       </div>
 
       <div className="card" style={{marginTop: '-0.25rem'}}>
