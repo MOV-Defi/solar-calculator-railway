@@ -2,6 +2,7 @@
 
 async function exportToPdfFile({
   printMode,
+  documentDetails = {},
   clientInfo,
   calculations,
   workspaceHandle,
@@ -136,7 +137,8 @@ async function exportToPdfFile({
   if (printMode === 'offer' && Array.isArray(appendedPdfFiles) && appendedPdfFiles.length > 0) {
     pdfBlob = await mergePdfBlobs(pdfBlob, appendedPdfFiles);
   }
-  const typeLabel = printMode === 'offer' ? 'КП' : 'Накладна';
+  const isFinalSettlementInvoice = printMode === 'invoice' && documentDetails?.invoicePaymentType === 'final';
+  const typeLabel = printMode === 'offer' ? 'КП' : (isFinalSettlementInvoice ? 'Накладна_Остаточний_розрахунок' : 'Накладна');
   const fileName = `${typeLabel}_${clientInfo.name || 'UNNAMED'}.pdf`;
   
   await saveToDiskUtility(workspaceHandle, clientInfo, calculations, fileName, pdfBlob, typeLabel, projectFolderName);

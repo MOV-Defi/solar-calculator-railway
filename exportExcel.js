@@ -354,6 +354,7 @@ async function exportToExcelFile({
     const remainingUsd = Math.max(0, toNumber(calculations?.sums?.finalTotalWithDiscountUsd, 0) - advanceTotalUsd);
     const remainingUah = Math.max(0, toNumber(calculations?.sums?.finalTotalWithDiscountUah, 0) - advanceTotalUah);
     const hasAdvance = advanceRows.length > 0 && (advanceTotalUsd > 0 || advanceTotalUah > 0);
+    const isFinalSettlementInvoice = !isOffer && safeDocumentDetails.invoicePaymentType === 'final';
     const buildContractLine = () => {
       const parts = [];
       const contractNumber = String(safeDocumentDetails.contractNumber || '').trim();
@@ -413,7 +414,7 @@ async function exportToExcelFile({
     await tryAddLogo();
 
     sheet.mergeCells('D2:H2');
-    sheet.getCell('D2').value = 'СПЕЦИФІКАЦІЯ ЗАМОВЛЕННЯ';
+    sheet.getCell('D2').value = isFinalSettlementInvoice ? 'СПЕЦИФІКАЦІЯ ЗАМОВЛЕННЯ / ОСТАТОЧНИЙ РОЗРАХУНОК' : 'СПЕЦИФІКАЦІЯ ЗАМОВЛЕННЯ';
     sheet.getCell('D2').font = { name: 'Arial', size: 18, bold: false, color: { argb: 'FF153772' } };
     sheet.getCell('D2').alignment = { horizontal: 'left', vertical: 'middle' };
 
@@ -622,7 +623,7 @@ async function exportToExcelFile({
     const totalRowIdx = rowNum + 1;
     sheet.mergeCells(`A${totalRowIdx}:F${totalRowIdx}`);
     const totalLabel = sheet.getCell(`A${totalRowIdx}`);
-    totalLabel.value = 'ЗАГАЛЬНА СУМА РОЗДРІБУ:';
+    totalLabel.value = isFinalSettlementInvoice ? 'ЗАГАЛЬНА СУМА ЗА НАКЛАДНОЮ:' : 'ЗАГАЛЬНА СУМА РОЗДРІБУ:';
     totalLabel.font = { name: 'Arial', size: 12, bold: true, color: { argb: 'FF153772' } };
     totalLabel.alignment = { horizontal: 'right', vertical: 'middle' };
     totalLabel.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFDE68A' } };
@@ -682,7 +683,9 @@ async function exportToExcelFile({
       if (advanceRows.length > 1) {
         addInvoiceSummaryLine('Усього аванс:', advanceTotalUsd, advanceTotalUah, true);
       }
-      addInvoiceSummaryLine('Залишок до сплати:', remainingUsd, remainingUah, true);
+    }
+    if (hasAdvance || isFinalSettlementInvoice) {
+      addInvoiceSummaryLine(isFinalSettlementInvoice ? 'Остаточний розрахунок до сплати:' : 'Залишок до сплати:', remainingUsd, remainingUah, true);
     }
     addInvoiceSummaryLine('Загальна маржа (до податків):', calculations?.sums?.grossMarginBeforeTaxesUsd, toNumber(calculations?.sums?.grossMarginBeforeTaxesUsd, 0) * toNumber(rates?.usd, 1), true);
     addInvoiceSummaryLine(`Комісія менеджера до податків (${toNumber(managerCommissionRate, 0)}%):`, calculations?.sums?.managerCommissionBeforeTaxesUsd, toNumber(calculations?.sums?.managerCommissionBeforeTaxesUsd, 0) * toNumber(rates?.usd, 1));
@@ -715,7 +718,7 @@ async function exportToExcelFile({
     const buffer = await workbook.xlsx.writeBuffer();
     const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
     const baseDocName = buildDocumentBaseName(clientInfo, calculations.stationPowerW);
-    const fileName = `${baseDocName}_Накладна.xlsx`;
+    const fileName = `${baseDocName}_${isFinalSettlementInvoice ? 'Накладна_Остаточний_розрахунок' : 'Накладна'}.xlsx`;
 
     await saveToDiskUtility(
       workspaceHandle,

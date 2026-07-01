@@ -106,6 +106,9 @@ const DEFAULT_DOCUMENT_DETAILS = {
   contractFopName: "",
   contractNumber: "",
   contractDate: "",
+  clientPhone: "",
+  warrantyInstallDate: "",
+  invoicePaymentType: "full",
   advances: []
 };
 const createDocumentAdvance = (overrides = {}) => ({
@@ -129,6 +132,7 @@ const normalizeDocumentDetails = (details = {}) => {
   return {
     ...DEFAULT_DOCUMENT_DETAILS,
     ...source,
+    invoicePaymentType: source.invoicePaymentType === "final" ? "final" : "full",
     advances: migratedAdvances
   };
 };
@@ -1498,6 +1502,7 @@ function App() {
         rates,
         modulePower,
         clientInfo,
+        documentDetails,
         offerPurpose,
         coverSystemName,
         coverPageType,
@@ -1974,11 +1979,26 @@ function App() {
   const exportToPdf = async () => {
     await exportToPdfFile({
       printMode,
+      documentDetails,
       clientInfo,
       calculations,
       workspaceHandle,
       projectFolderName: (currentProjectFolderName || projectName || '').trim(),
       appendedPdfFiles: printMode === 'offer' ? offerAppendPdfFiles : []
+    });
+  };
+
+  const exportWarrantyDocx = async () => {
+    if (typeof window.exportWarrantyDocxFile !== 'function') {
+      alert('Модуль гарантійного талона не завантажений. Оновіть сторінку та спробуйте ще раз.');
+      return;
+    }
+    await window.exportWarrantyDocxFile({
+      clientInfo,
+      documentDetails,
+      calculations,
+      workspaceHandle,
+      projectFolderName: (currentProjectFolderName || projectName || '').trim()
     });
   };
 
@@ -3235,6 +3255,7 @@ function App() {
   const remainingUsd = Math.max(0, toNumber(calculations.sums.finalTotalWithDiscountUsd, 0) - advanceTotalUsd);
   const remainingUah = Math.max(0, toNumber(calculations.sums.finalTotalWithDiscountUah, 0) - advanceTotalUah);
   const hasAdvance = advanceRowsForPrint.length > 0 && (advanceTotalUsd > 0 || advanceTotalUah > 0);
+  const isFinalSettlementInvoice = normalizedDocumentDetails.invoicePaymentType === 'final';
   const advanceUsdParts = splitMoneyParts(advanceTotalUsd);
   const advanceUahParts = splitMoneyParts(advanceTotalUah);
   const remainingUsdParts = splitMoneyParts(remainingUsd);
@@ -3825,6 +3846,7 @@ function App() {
             <button type="button" className="secondary menu-action-btn" data-cat="export" style={{background: "#92400e"}} onClick={openPurchaseExportDialog} data-title="Excel закупка"><MenuBtnLabel icon="🛒" label="Excel закупка" /></button>
             <button type="button" className="secondary menu-action-btn" data-cat="print" style={{background: '#7c3aed'}} onClick={() => setPrintMode('offer')} data-title="КП"><MenuBtnLabel icon="📄" label="КП" /></button>
             <button type="button" className="secondary menu-action-btn" data-cat="print" style={{background: '#3b82f6'}} onClick={() => setPrintMode('invoice')} data-title="Накладна"><MenuBtnLabel icon="🧾" label="Накладна" /></button>
+            <button type="button" className="secondary menu-action-btn" data-cat="print" style={{background: '#1d4ed8'}} onClick={exportWarrantyDocx} data-title="Гарантійний талон"><MenuBtnLabel icon="🛡️" label="Гарантійний талон" /></button>
           </div>
         </div>
 
@@ -3966,6 +3988,34 @@ function App() {
               onChange={(e) => setDocumentDetails({...documentDetails, contractDate: e.target.value})}
               placeholder="дд.мм.рррр"
             />
+          </div>
+          <div className="input-group" style={{margin: 0}}>
+            <label>Телефон для талона</label>
+            <input
+              type="text"
+              value={documentDetails.clientPhone || ''}
+              onChange={(e) => setDocumentDetails({...documentDetails, clientPhone: e.target.value})}
+              placeholder="+380..."
+            />
+          </div>
+          <div className="input-group" style={{margin: 0}}>
+            <label>Дата монтажу</label>
+            <input
+              type="text"
+              value={documentDetails.warrantyInstallDate || ''}
+              onChange={(e) => setDocumentDetails({...documentDetails, warrantyInstallDate: e.target.value})}
+              placeholder="дд.мм.рррр"
+            />
+          </div>
+          <div className="input-group" style={{margin: 0}}>
+            <label>Тип накладної</label>
+            <select
+              value={normalizedDocumentDetails.invoicePaymentType || 'full'}
+              onChange={(e) => setDocumentDetails({...normalizedDocumentDetails, invoicePaymentType: e.target.value})}
+            >
+              <option value="full">Звичайна накладна</option>
+              <option value="final">Остаточний розрахунок</option>
+            </select>
           </div>
           <div className="input-group" style={{margin: 0, gridColumn: '1 / -1'}}>
             <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', marginBottom: '0.5rem'}}>
@@ -5583,7 +5633,7 @@ function App() {
                     <img src="./SolarLogo3.png" alt="Solar Service" style={{height: '88px', objectFit: 'contain'}} />
                   </div>
                   <div className="invoice-orange-line"></div>
-                  <h1 className="invoice-title">СПЕЦИФІКАЦІЯ ЗАМОВЛЕННЯ</h1>
+                  <h1 className="invoice-title">{isFinalSettlementInvoice ? 'СПЕЦИФІКАЦІЯ ЗАМОВЛЕННЯ / ОСТАТОЧНИЙ РОЗРАХУНОК' : 'СПЕЦИФІКАЦІЯ ЗАМОВЛЕННЯ'}</h1>
                   <div className="invoice-doc-meta">№ {String(normalizedDocumentDetails.specNumber || '').trim() || '_______'} &nbsp;&nbsp; від {new Date().toLocaleDateString('uk-UA')} р.</div>
                   {documentContractLine && <div className="invoice-doc-meta">{documentContractLine}</div>}
                   <div className="invoice-orange-line" style={{marginBottom: '0.8rem'}}></div>
@@ -5763,7 +5813,7 @@ function App() {
                   )}
                   <tr className="print-total-row">
                      <td colSpan="4" className="text-right" style={{fontWeight: 'bold', fontSize: printMode === 'invoice' ? '0.98rem' : '1.1rem'}}>
-                        {printMode === 'offer' && hasOfferDiscount ? 'ЗАГАЛОМ ДО СПЛАТИ (ЗІ ЗНИЖКОЮ):' : 'ЗАГАЛОМ ДО СПЛАТИ:'}
+                        {printMode === 'invoice' && isFinalSettlementInvoice ? 'ЗАГАЛЬНА СУМА ЗА НАКЛАДНОЮ:' : (printMode === 'offer' && hasOfferDiscount ? 'ЗАГАЛОМ ДО СПЛАТИ (ЗІ ЗНИЖКОЮ):' : 'ЗАГАЛОМ ДО СПЛАТИ:')}
                      </td>
                      {showUsdInPrint && (
                        <td colSpan="2" className="text-right" style={{fontWeight: 'bold', fontSize: printMode === 'invoice' ? '0.98rem' : '1.05rem', whiteSpace: 'nowrap', lineHeight: 1.1}}>
@@ -5810,9 +5860,9 @@ function App() {
                       )}
                     </tr>
                   )}
-                  {printMode === 'invoice' && hasAdvance && (
+                  {printMode === 'invoice' && (hasAdvance || isFinalSettlementInvoice) && (
                     <tr className="print-total-row">
-                      <td colSpan="4" className="text-right" style={{fontWeight: 'bold', fontSize: '0.98rem'}}>ЗАЛИШОК ДО СПЛАТИ:</td>
+                      <td colSpan="4" className="text-right" style={{fontWeight: 'bold', fontSize: '0.98rem'}}>{isFinalSettlementInvoice ? 'ОСТАТОЧНИЙ РОЗРАХУНОК ДО СПЛАТИ:' : 'ЗАЛИШОК ДО СПЛАТИ:'}</td>
                       {showUsdInPrint && (
                         <td colSpan="2" className="text-right" style={{fontWeight: 'bold', fontSize: '0.98rem', whiteSpace: 'nowrap', lineHeight: 1.1}}>
                           ${remainingUsdParts.whole},{remainingUsdParts.frac}
