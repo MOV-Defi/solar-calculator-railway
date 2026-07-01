@@ -323,6 +323,11 @@ async function exportToExcelFile({
       const parsed = new Date(raw);
       return Number.isNaN(parsed.getTime()) ? raw : parsed.toLocaleDateString('uk-UA');
     };
+    const formatShortContractDate = (value) => {
+      const formatted = formatContractDate(value);
+      const match = formatted.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
+      return match ? `${match[1]}.${match[2]}.${match[3].slice(2)}` : formatted;
+    };
     const normalizeAdvanceRows = () => {
       const explicitAdvances = Array.isArray(safeDocumentDetails.advances)
         ? safeDocumentDetails.advances
@@ -363,7 +368,8 @@ async function exportToExcelFile({
     const hasManualFinalSettlement = finalSettlementUsd > 0 || finalSettlementUah > 0;
     const finalSettlementTotalUsd = hasManualFinalSettlement ? finalSettlementUsd + (finalSettlementUah / usdRateForAdvance) : remainingUsd;
     const finalSettlementTotalUah = hasManualFinalSettlement ? finalSettlementUah + (finalSettlementUsd * usdRateForAdvance) : remainingUah;
-    const finalSettlementLabel = 'Остаточний розрахунок:';
+    const finalSettlementShortDate = formatShortContractDate(finalSettlementDetails.date);
+    const finalSettlementLabel = `Остаточний розрахунок${finalSettlementShortDate ? ` ${finalSettlementShortDate}` : ''}:`;
     const defaultInvoiceTitle = isFinalSettlementInvoice ? 'ОСТАТОЧНИЙ РОЗРАХУНОК' : 'СПЕЦИФІКАЦІЯ ЗАМОВЛЕННЯ';
     const invoiceDocumentTitle = String(safeDocumentDetails.documentTitle || '').trim() || defaultInvoiceTitle;
     const invoiceDocumentDate = formatContractDate(safeDocumentDetails.documentDate) || new Date().toLocaleDateString('uk-UA');

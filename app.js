@@ -3242,6 +3242,11 @@ function App() {
     const parsed = new Date(raw);
     return Number.isNaN(parsed.getTime()) ? raw : parsed.toLocaleDateString('uk-UA');
   };
+  const formatShortDocumentDate = (value) => {
+    const formatted = formatDocumentDate(value);
+    const match = formatted.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
+    return match ? `${match[1]}.${match[2]}.${match[3].slice(2)}` : formatted;
+  };
   const normalizedDocumentDetails = normalizeDocumentDetails(documentDetails);
   const documentAdvances = Array.isArray(normalizedDocumentDetails.advances) ? normalizedDocumentDetails.advances : [];
   const usdRateForAdvance = Math.max(0.000001, toNumber(rates.usd, 0));
@@ -3277,7 +3282,8 @@ function App() {
   const hasManualFinalSettlement = finalSettlementUsd > 0 || finalSettlementUah > 0;
   const finalSettlementTotalUsd = hasManualFinalSettlement ? finalSettlementUsd + (finalSettlementUah / usdRateForAdvance) : remainingUsd;
   const finalSettlementTotalUah = hasManualFinalSettlement ? finalSettlementUah + (finalSettlementUsd * usdRateForAdvance) : remainingUah;
-  const finalSettlementLabel = 'ОСТАТОЧНИЙ РОЗРАХУНОК:';
+  const finalSettlementShortDate = formatShortDocumentDate(finalSettlementDetails.date);
+  const finalSettlementLabel = `ОСТАТОЧНИЙ РОЗРАХУНОК${finalSettlementShortDate ? ` ${finalSettlementShortDate}` : ''}:`;
   const advanceUsdParts = splitMoneyParts(advanceTotalUsd);
   const advanceUahParts = splitMoneyParts(advanceTotalUah);
   const remainingUsdParts = splitMoneyParts(remainingUsd);
