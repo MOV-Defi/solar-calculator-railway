@@ -2039,7 +2039,13 @@ function App() {
   };
 
   const addOfferAppendPdfFiles = (incomingFiles) => {
-    const picked = Array.from(incomingFiles || []).filter((f) => /\.pdf$/i.test(String(f?.name || '')) || String(f?.type || '').toLowerCase() === 'application/pdf');
+    const supportedExt = /\.(pdf|png|jpe?g|webp|docx?|xlsx?)$/i;
+    const supportedMime = /^(application\/pdf|image\/png|image\/jpe?g|image\/webp|application\/msword|application\/vnd\.openxmlformats-officedocument\.wordprocessingml\.document|application\/vnd\.ms-excel|application\/vnd\.openxmlformats-officedocument\.spreadsheetml\.sheet)$/i;
+    const picked = Array.from(incomingFiles || []).filter((f) => {
+      const name = String(f?.name || '');
+      const type = String(f?.type || '');
+      return supportedExt.test(name) || supportedMime.test(type);
+    });
     if (!picked.length) return;
     setOfferAppendPdfFiles((prev) => {
       const next = [...(Array.isArray(prev) ? prev : [])];
@@ -6175,7 +6181,7 @@ function App() {
                    <input
                      ref={offerAppendPdfInputRef}
                      type="file"
-                     accept="application/pdf,.pdf"
+                     accept="application/pdf,image/*,.pdf,.png,.jpg,.jpeg,.webp,.doc,.docx,.xls,.xlsx"
                      multiple
                      style={{display: 'none'}}
                      onChange={(e) => {
@@ -6190,11 +6196,11 @@ function App() {
                      }}
                      style={{width: '100%', maxWidth: '560px', border: '1px dashed #64748b', borderRadius: '10px', padding: '0.8rem', color: '#cbd5e1'}}
                    >
-                     Перетягніть PDF сюди або
+                     Перетягніть PDF, фото, Word або Excel сюди або
                      <button type="button" className="secondary" style={{background: '#475569', marginLeft: '0.5rem'}} onClick={() => offerAppendPdfInputRef.current?.click()}>
-                       Додати PDF до КП
+                       Додати файли до КП
                      </button>
-                     <div style={{fontSize: '0.85rem', marginTop: '0.35rem'}}>Максимум 5 файлів</div>
+                     <div style={{fontSize: '0.85rem', marginTop: '0.35rem'}}>PDF додаються сторінками, фото як сторінки, Word/Excel як вкладення. Максимум 5 файлів</div>
                    </div>
                    {offerAppendPdfFiles.length > 0 && (
                      <div style={{width: '100%', maxWidth: '560px', textAlign: 'left'}}>
@@ -6222,7 +6228,7 @@ function App() {
                            if (offerAppendPdfInputRef.current) offerAppendPdfInputRef.current.value = '';
                          }}
                        >
-                         Очистити всі PDF
+                         Очистити всі файли
                        </button>
                      </div>
                    )}

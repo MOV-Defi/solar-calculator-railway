@@ -151,27 +151,114 @@ async function mergePdfBlobs(mainPdfBlob, appendPdfFilesOrBlobs) {
     return mainPdfBlob;
   }
   try {
-    const { PDFDocument } = window.PDFLib;
+    const { PDFDocument, StandardFonts, rgb } = window.PDFLib;
     const mergedPdf = await PDFDocument.create();
     const mainBytes = await mainPdfBlob.arrayBuffer();
     const mainDoc = await PDFDocument.load(mainBytes);
     const mainPages = await mergedPdf.copyPages(mainDoc, mainDoc.getPageIndices());
     mainPages.forEach((page) => mergedPdf.addPage(page));
     const extras = Array.isArray(appendPdfFilesOrBlobs) ? appendPdfFilesOrBlobs : [appendPdfFilesOrBlobs];
+    const attachedFiles = [];
+
     for (const extraFile of extras) {
       if (!extraFile) continue;
+      const fileName = String(extraFile.name || 'attachment').trim() || 'attachment';
+      const fileType = String(extraFile.type || '').toLowerCase();
+      const isPdf = fileType === 'application/pdf' || /\.pdf$/i.test(fileName);
+      const isImage = /^(image\/png|image\/jpe?g|image\/webp)$/i.test(fileType) || /\.(png|jpe?g|webp)$/i.test(fileName);
+      const isOffice = /\.(docx?|xlsx?)$/i.test(fileName) || /word|excel|spreadsheet|msword/.test(fileType);
       const extraBytes = await extraFile.arrayBuffer();
-      const extraDoc = await PDFDocument.load(extraBytes);
-      const extraPages = await mergedPdf.copyPages(extraDoc, extraDoc.getPageIndices());
-      extraPages.forEach((page) => mergedPdf.addPage(page));
+
+      if (isPdf) {
+        const extraDoc = await PDFDocument.load(extraBytes);
+        const extraPages = await mergedPdf.copyPages(extraDoc, extraDoc.getPageIndices());
+        extraPages.forEach((page) => mergedPdf.addPage(page));
+        continue;
+      }
+
+      if (isImage) {
+        const imageBytes = await normalizeImageForPdf(extraFile, extraBytes);
+        const image = imageBytes.mimeType === 'image/jpeg'
+          ? await mergedPdf.embedJpg(imageBytes.bytes)
+          : await mergedPdf.embedPng(imageBytes.bytes);
+        const page = mergedPdf.addPage([595.28, 841.89]);
+        const margin = 36;
+        const maxWidth = page.getWidth() - (margin * 2);
+        const maxHeight = page.getHeight() - (margin * 2);
+        const scale = Math.min(maxWidth / image.width, maxHeight / image.height, 1);
+        const width = image.width * scale;
+        const height = image.height * scale;
+        page.drawImage(image, {
+          x: (page.getWidth() - width) / 2,
+          y: (page.getHeight() - height) / 2,
+          width,
+          height
+        });
+        continue;
+      }
+
+      if (isOffice && typeof mergedPdf.attach === 'function') {
+        await mergedPdf.attach(extraBytes, fileName, {
+          mimeType: extraFile.type || 'application/octet-stream',
+          description: 'Додаток до КП',
+          creationDate: new Date(extraFile.lastModified || Date.now()),
+          modificationDate: new Date(extraFile.lastModified || Date.now())
+        });
+        attachedFiles.push(fileName);
+      }
+    }
+
+    if (attachedFiles.length > 0) {
+      const font = await mergedPdf.embedFont(StandardFonts.Helvetica);
+      const page = mergedPdf.addPage([595.28, 841.89]);
+      page.drawText('Attached files', { x: 48, y: 790, size: 18, font, color: rgb(0.08, 0.22, 0.45) });
+      page.drawText('Word / Excel files are embedded in this PDF as attachments.', { x: 48, y: 760, size: 11, font, color: rgb(0.1, 0.1, 0.1) });
+      attachedFiles.slice(0, 20).forEach((name, idx) => {
+        page.drawText(`${idx + 1}. ${safePdfText(name)}`, { x: 60, y: 725 - (idx * 18), size: 10, font, color: rgb(0.1, 0.1, 0.1) });
+      });
     }
 
     const mergedBytes = await mergedPdf.save();
     return new Blob([mergedBytes], { type: 'application/pdf' });
   } catch (error) {
     console.error('PDF merge error:', error);
-    alert('Не вдалося додати вкладений PDF до КП. Збережено лише основний КП PDF.');
+    alert('Не вдалося додати вкладені файли до КП. Збережено лише основний КП PDF.');
     return mainPdfBlob;
+  }
+}
+
+function safePdfText(value = '') {
+  return String(value || '').replace(/[^\x20-\x7E]/g, '?');
+}
+
+async function normalizeImageForPdf(file, arrayBuffer) {
+  const name = String(file?.name || '');
+  const type = String(file?.type || '').toLowerCase();
+  if (type === 'image/jpeg' || /\.jpe?g$/i.test(name)) {
+    return { bytes: arrayBuffer, mimeType: 'image/jpeg' };
+  }
+  if (type === 'image/png' || /\.png$/i.test(name)) {
+    return { bytes: arrayBuffer, mimeType: 'image/png' };
+  }
+
+  const blob = new Blob([arrayBuffer], { type: file?.type || 'image/webp' });
+  const url = URL.createObjectURL(blob);
+  try {
+    const image = await new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = reject;
+      img.src = url;
+    });
+    const canvas = document.createElement('canvas');
+    canvas.width = image.naturalWidth || image.width;
+    canvas.height = image.naturalHeight || image.height;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(image, 0, 0);
+    const pngBlob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+    return { bytes: await pngBlob.arrayBuffer(), mimeType: 'image/png' };
+  } finally {
+    URL.revokeObjectURL(url);
   }
 }
 
