@@ -355,6 +355,18 @@ async function exportToExcelFile({
     const remainingUah = Math.max(0, toNumber(calculations?.sums?.finalTotalWithDiscountUah, 0) - advanceTotalUah);
     const hasAdvance = advanceRows.length > 0 && (advanceTotalUsd > 0 || advanceTotalUah > 0);
     const isFinalSettlementInvoice = !isOffer && safeDocumentDetails.invoicePaymentType === 'final';
+    const finalSettlementDetails = safeDocumentDetails.finalSettlement && typeof safeDocumentDetails.finalSettlement === 'object'
+      ? safeDocumentDetails.finalSettlement
+      : safeDocumentDetails;
+    const finalSettlementUsd = Math.max(0, toNumber(finalSettlementDetails.usd ?? finalSettlementDetails.finalSettlementUsd, 0));
+    const finalSettlementUah = Math.max(0, toNumber(finalSettlementDetails.uah ?? finalSettlementDetails.finalSettlementUah, 0));
+    const hasManualFinalSettlement = finalSettlementUsd > 0 || finalSettlementUah > 0;
+    const finalSettlementTotalUsd = hasManualFinalSettlement ? finalSettlementUsd + (finalSettlementUah / usdRateForAdvance) : remainingUsd;
+    const finalSettlementTotalUah = hasManualFinalSettlement ? finalSettlementUah + (finalSettlementUsd * usdRateForAdvance) : remainingUah;
+    const finalSettlementDateText = formatContractDate(finalSettlementDetails.date);
+    const finalSettlementNoteText = String(finalSettlementDetails.note || '').trim();
+    const finalSettlementMetaText = [finalSettlementDateText ? `від ${finalSettlementDateText}` : '', finalSettlementNoteText].filter(Boolean).join(' · ');
+    const finalSettlementLabel = `Остаточний розрахунок до сплати${finalSettlementMetaText ? ` (${finalSettlementMetaText})` : ''}:`;
     const buildContractLine = () => {
       const parts = [];
       const contractNumber = String(safeDocumentDetails.contractNumber || '').trim();
@@ -685,7 +697,7 @@ async function exportToExcelFile({
       }
     }
     if (hasAdvance || isFinalSettlementInvoice) {
-      addInvoiceSummaryLine(isFinalSettlementInvoice ? 'Остаточний розрахунок до сплати:' : 'Залишок до сплати:', remainingUsd, remainingUah, true);
+      addInvoiceSummaryLine(isFinalSettlementInvoice ? finalSettlementLabel : 'Залишок до сплати:', isFinalSettlementInvoice ? finalSettlementTotalUsd : remainingUsd, isFinalSettlementInvoice ? finalSettlementTotalUah : remainingUah, true);
     }
     addInvoiceSummaryLine('Загальна маржа (до податків):', calculations?.sums?.grossMarginBeforeTaxesUsd, toNumber(calculations?.sums?.grossMarginBeforeTaxesUsd, 0) * toNumber(rates?.usd, 1), true);
     addInvoiceSummaryLine(`Комісія менеджера до податків (${toNumber(managerCommissionRate, 0)}%):`, calculations?.sums?.managerCommissionBeforeTaxesUsd, toNumber(calculations?.sums?.managerCommissionBeforeTaxesUsd, 0) * toNumber(rates?.usd, 1));

@@ -109,6 +109,12 @@ const DEFAULT_DOCUMENT_DETAILS = {
   clientPhone: "",
   warrantyInstallDate: "",
   invoicePaymentType: "full",
+  finalSettlement: {
+    date: "",
+    usd: 0,
+    uah: 0,
+    note: ""
+  },
   advances: []
 };
 const createDocumentAdvance = (overrides = {}) => ({
@@ -116,6 +122,12 @@ const createDocumentAdvance = (overrides = {}) => ({
   date: overrides.date || "",
   usd: toNumber(overrides.usd ?? overrides.advanceUsd, 0),
   uah: toNumber(overrides.uah ?? overrides.advanceUah, 0),
+  note: overrides.note || ""
+});
+const createFinalSettlement = (overrides = {}) => ({
+  date: overrides.date || "",
+  usd: toNumber(overrides.usd ?? overrides.finalSettlementUsd, 0),
+  uah: toNumber(overrides.uah ?? overrides.finalSettlementUah, 0),
   note: overrides.note || ""
 });
 const normalizeDocumentDetails = (details = {}) => {
@@ -133,6 +145,7 @@ const normalizeDocumentDetails = (details = {}) => {
     ...DEFAULT_DOCUMENT_DETAILS,
     ...source,
     invoicePaymentType: source.invoicePaymentType === "final" ? "final" : "full",
+    finalSettlement: createFinalSettlement(source.finalSettlement || source),
     advances: migratedAdvances
   };
 };
@@ -3256,10 +3269,22 @@ function App() {
   const remainingUah = Math.max(0, toNumber(calculations.sums.finalTotalWithDiscountUah, 0) - advanceTotalUah);
   const hasAdvance = advanceRowsForPrint.length > 0 && (advanceTotalUsd > 0 || advanceTotalUah > 0);
   const isFinalSettlementInvoice = normalizedDocumentDetails.invoicePaymentType === 'final';
+  const finalSettlementDetails = normalizedDocumentDetails.finalSettlement || {};
+  const finalSettlementUsd = Math.max(0, toNumber(finalSettlementDetails.usd, 0));
+  const finalSettlementUah = Math.max(0, toNumber(finalSettlementDetails.uah, 0));
+  const hasManualFinalSettlement = finalSettlementUsd > 0 || finalSettlementUah > 0;
+  const finalSettlementTotalUsd = hasManualFinalSettlement ? finalSettlementUsd + (finalSettlementUah / usdRateForAdvance) : remainingUsd;
+  const finalSettlementTotalUah = hasManualFinalSettlement ? finalSettlementUah + (finalSettlementUsd * usdRateForAdvance) : remainingUah;
+  const finalSettlementDateText = formatDocumentDate(finalSettlementDetails.date);
+  const finalSettlementNoteText = String(finalSettlementDetails.note || '').trim();
+  const finalSettlementMetaText = [finalSettlementDateText ? `від ${finalSettlementDateText}` : '', finalSettlementNoteText].filter(Boolean).join(' · ');
+  const finalSettlementLabel = `ОСТАТОЧНИЙ РОЗРАХУНОК ДО СПЛАТИ${finalSettlementMetaText ? ` (${finalSettlementMetaText})` : ''}:`;
   const advanceUsdParts = splitMoneyParts(advanceTotalUsd);
   const advanceUahParts = splitMoneyParts(advanceTotalUah);
   const remainingUsdParts = splitMoneyParts(remainingUsd);
   const remainingUahParts = splitMoneyParts(remainingUah);
+  const finalSettlementUsdParts = splitMoneyParts(finalSettlementTotalUsd);
+  const finalSettlementUahParts = splitMoneyParts(finalSettlementTotalUah);
   const documentContractLine = (() => {
     const parts = [];
     const contractNumber = String(normalizedDocumentDetails.contractNumber || '').trim();
@@ -4087,6 +4112,77 @@ function App() {
               ))}
             </div>
           </div>
+          {normalizedDocumentDetails.invoicePaymentType === 'final' && (
+            <div className="input-group" style={{margin: 0, gridColumn: '1 / -1'}}>
+              <label>Остаточний розрахунок</label>
+              <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1.4fr', gap: '0.5rem', alignItems: 'end'}}>
+                <div>
+                  <label>Дата остаточного розрахунку</label>
+                  <input
+                    type="text"
+                    value={normalizedDocumentDetails.finalSettlement?.date || ''}
+                    onChange={(e) => setDocumentDetails({
+                      ...normalizedDocumentDetails,
+                      finalSettlement: {
+                        ...normalizedDocumentDetails.finalSettlement,
+                        date: e.target.value
+                      }
+                    })}
+                    placeholder="дд.мм.рррр"
+                  />
+                </div>
+                <div>
+                  <label>Сума, $</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={normalizedDocumentDetails.finalSettlement?.usd ?? 0}
+                    onChange={(e) => setDocumentDetails({
+                      ...normalizedDocumentDetails,
+                      finalSettlement: {
+                        ...normalizedDocumentDetails.finalSettlement,
+                        usd: parseNumberInput(e.target.value)
+                      }
+                    })}
+                    placeholder="0"
+                  />
+                </div>
+                <div>
+                  <label>Сума, грн</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={normalizedDocumentDetails.finalSettlement?.uah ?? 0}
+                    onChange={(e) => setDocumentDetails({
+                      ...normalizedDocumentDetails,
+                      finalSettlement: {
+                        ...normalizedDocumentDetails.finalSettlement,
+                        uah: parseNumberInput(e.target.value)
+                      }
+                    })}
+                    placeholder="0"
+                  />
+                </div>
+                <div>
+                  <label>Примітка</label>
+                  <input
+                    type="text"
+                    value={normalizedDocumentDetails.finalSettlement?.note || ''}
+                    onChange={(e) => setDocumentDetails({
+                      ...normalizedDocumentDetails,
+                      finalSettlement: {
+                        ...normalizedDocumentDetails.finalSettlement,
+                        note: e.target.value
+                      }
+                    })}
+                    placeholder="Напр. після монтажу"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
         </div>
         )}
       </div>
@@ -5862,15 +5958,15 @@ function App() {
                   )}
                   {printMode === 'invoice' && (hasAdvance || isFinalSettlementInvoice) && (
                     <tr className="print-total-row">
-                      <td colSpan="4" className="text-right" style={{fontWeight: 'bold', fontSize: '0.98rem'}}>{isFinalSettlementInvoice ? 'ОСТАТОЧНИЙ РОЗРАХУНОК ДО СПЛАТИ:' : 'ЗАЛИШОК ДО СПЛАТИ:'}</td>
+                      <td colSpan="4" className="text-right" style={{fontWeight: 'bold', fontSize: '0.98rem'}}>{isFinalSettlementInvoice ? finalSettlementLabel : 'ЗАЛИШОК ДО СПЛАТИ:'}</td>
                       {showUsdInPrint && (
                         <td colSpan="2" className="text-right" style={{fontWeight: 'bold', fontSize: '0.98rem', whiteSpace: 'nowrap', lineHeight: 1.1}}>
-                          ${remainingUsdParts.whole},{remainingUsdParts.frac}
+                          ${isFinalSettlementInvoice ? finalSettlementUsdParts.whole : remainingUsdParts.whole},{isFinalSettlementInvoice ? finalSettlementUsdParts.frac : remainingUsdParts.frac}
                         </td>
                       )}
                       {showUahInPrint && (
                         <td colSpan="2" className="text-right" style={{fontWeight: 'bold', fontSize: '0.98rem', whiteSpace: 'nowrap', lineHeight: 1.1}}>
-                          {remainingUahParts.whole},{remainingUahParts.frac} грн
+                          {isFinalSettlementInvoice ? finalSettlementUahParts.whole : remainingUahParts.whole},{isFinalSettlementInvoice ? finalSettlementUahParts.frac : remainingUahParts.frac} грн
                         </td>
                       )}
                     </tr>
