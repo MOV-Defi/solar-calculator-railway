@@ -244,11 +244,23 @@ const buildCalculationsForOfferSheetExport = (snap = {}, summary = {}) => {
   const otherCostsCostUsd = processedOtherExpenses.reduce((acc, row) => acc + toNumber(row?.costUsd, 0), 0);
   const installPercentAmountUsd = materialsSumUsd * (Math.max(0, toNumber(snap?.installPercent, 0)) / 100);
   const finalTotalUsd = materialsSumUsd + workItemsSumUsd + otherCostsUsd + installPercentAmountUsd;
+  const usdRate = Math.max(0.000001, toNumber(rates?.usd, 1));
+  const discountMode = ['percent', 'usd', 'uah'].includes(snap?.clientDiscountMode) ? snap.clientDiscountMode : 'percent';
   const discountPercent = Math.max(0, toNumber(snap?.clientDiscountPercent, 0));
-  const discountUsd = finalTotalUsd * (discountPercent / 100);
+  const discountAmount = Math.max(0, toNumber(snap?.clientDiscountAmount, 0));
+  const discountScope = ['full', 'goods', 'works'].includes(snap?.clientDiscountScope) ? snap.clientDiscountScope : 'full';
+  const discountBaseUsd =
+    discountScope === 'goods' ? materialsSumUsd :
+    discountScope === 'works' ? (workItemsSumUsd + installPercentAmountUsd) :
+    finalTotalUsd;
+  const rawDiscountUsd =
+    discountMode === 'usd' ? discountAmount :
+    discountMode === 'uah' ? (discountAmount / usdRate) :
+    discountBaseUsd * (discountPercent / 100);
+  const discountUsd = Math.min(discountBaseUsd, rawDiscountUsd);
+  const effectiveDiscountPercent = discountBaseUsd > 0 ? (discountUsd / discountBaseUsd) * 100 : 0;
   const finalTotalWithDiscountUsd = Math.max(0, finalTotalUsd - discountUsd);
   const orderCostUsd = materialsCostUsd + workItemsCostUsd + otherCostsCostUsd;
-  const usdRate = Math.max(0.000001, toNumber(rates?.usd, 1));
 
   return {
     groups,
@@ -266,7 +278,11 @@ const buildCalculationsForOfferSheetExport = (snap = {}, summary = {}) => {
       installPercentAmountUsd,
       finalTotalUsd,
       finalTotalUah: finalTotalUsd * usdRate,
-      discountPercent,
+      discountMode,
+      discountPercent: effectiveDiscountPercent,
+      discountInputPercent: discountPercent,
+      discountAmount,
+      discountScope,
       discountUsd,
       finalTotalWithDiscountUsd,
       finalTotalWithDiscountUah: finalTotalWithDiscountUsd * usdRate,
@@ -1239,8 +1255,8 @@ const isExpandableByType = (groupKey) => {
       c.border = { top: { style: 'medium' }, bottom: { style: 'medium' } };
     });
 
-    const discountPercent = toNumber(calculations?.sums?.discountPercent, 0);
-    if (discountPercent > 0) {
+    const discountUsd = toNumber(calculations?.sums?.discountUsd, 0);
+    if (discountUsd > 0) {
       const withoutDiscountRow = sheet.getRow(currentRow++);
       withoutDiscountRow.getCell(1).value = 'РАЗОМ ДО СПЛАТИ (без знижки):';
       withoutDiscountRow.getCell(6).value = toNumber(calculations?.sums?.finalTotalUsd, 0);
@@ -1259,9 +1275,9 @@ const isExpandableByType = (groupKey) => {
       }
 
       const discountRow = sheet.getRow(currentRow++);
-      discountRow.getCell(1).value = `Знижка клієнту (${discountPercent}%):`;
-      discountRow.getCell(6).value = toNumber(calculations?.sums?.discountUsd, 0);
-      discountRow.getCell(7).value = toNumber(calculations?.sums?.discountUsd, 0) * toNumber(rates?.usd, 1);
+      discountRow.getCell(1).value = 'Знижка клієнту:';
+      discountRow.getCell(6).value = discountUsd;
+      discountRow.getCell(7).value = discountUsd * toNumber(rates?.usd, 1);
       for (let i = 1; i <= outHeaders.length; i += 1) {
         const c = discountRow.getCell(i);
         c.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };

@@ -40,6 +40,11 @@ const DISCOUNT_SCOPES = {
   goods: "Тільки товар",
   works: "Тільки роботи"
 };
+const DISCOUNT_MODES = {
+  percent: "%",
+  usd: "$",
+  uah: "грн"
+};
 const DEFAULT_OFFER_TECH_OVERRIDES = {
   systemType: "",
   solarPower: "",
@@ -577,7 +582,9 @@ function App() {
   const [workItems, setWorkItems] = useState(() => getSaved('solar_workItems', cloneList(DEFAULT_WORK_ITEMS)));
   const [installPercent, setInstallPercent] = useState(() => getSaved('solar_installPercent', 15));
   const [managerCommissionRate, setManagerCommissionRate] = useState(() => getSaved('solar_managerCommissionRate', 10));
+  const [clientDiscountMode, setClientDiscountMode] = useState(() => getSaved('solar_clientDiscountMode', 'percent'));
   const [clientDiscountPercent, setClientDiscountPercent] = useState(() => getSaved('solar_clientDiscountPercent', 0));
+  const [clientDiscountAmount, setClientDiscountAmount] = useState(() => getSaved('solar_clientDiscountAmount', 0));
   const [clientDiscountScope, setClientDiscountScope] = useState(() => getSaved('solar_clientDiscountScope', 'full'));
   const [taxMode, setTaxMode] = useState(() => getSaved('solar_taxMode', 'none'));
   const [fopTaxPercent, setFopTaxPercent] = useState(() => getSaved('solar_fopTaxPercent', 7));
@@ -1260,7 +1267,9 @@ function App() {
     workItems,
     installPercent,
     managerCommissionRate,
+    clientDiscountMode,
     clientDiscountPercent,
+    clientDiscountAmount,
     clientDiscountScope,
     taxMode,
     fopTaxPercent,
@@ -1351,7 +1360,9 @@ function App() {
     setWorkItems(Array.isArray(data.workItems) ? cloneList(data.workItems) : cloneList(DEFAULT_WORK_ITEMS));
     setInstallPercent(data.installPercent ?? 15);
     setManagerCommissionRate(data.managerCommissionRate ?? 10);
+    setClientDiscountMode(DISCOUNT_MODES[data.clientDiscountMode] ? data.clientDiscountMode : 'percent');
     setClientDiscountPercent(data.clientDiscountPercent ?? 0);
+    setClientDiscountAmount(data.clientDiscountAmount ?? 0);
     setClientDiscountScope(data.clientDiscountScope || 'full');
     setTaxMode(data.taxMode || 'none');
     setFopTaxPercent(data.fopTaxPercent ?? 7);
@@ -1406,7 +1417,9 @@ function App() {
     setClientInfo(data.clientInfo && typeof data.clientInfo === 'object' ? data.clientInfo : DEFAULT_CLIENT_INFO);
     setDocumentDetails(normalizeDocumentDetails(data.documentDetails));
     setManagerCommissionRate(data.managerCommissionRate ?? 10);
+    setClientDiscountMode(DISCOUNT_MODES[data.clientDiscountMode] ? data.clientDiscountMode : 'percent');
     setClientDiscountPercent(data.clientDiscountPercent ?? 0);
+    setClientDiscountAmount(data.clientDiscountAmount ?? 0);
     setClientDiscountScope(data.clientDiscountScope || 'full');
     setTaxMode(data.taxMode || 'none');
     setVatRecalcScope(data.vatRecalcScope || 'goods_all');
@@ -1466,7 +1479,9 @@ function App() {
         : loadedManagers[0].id
     );
     setInstallPercent(data.installPercent ?? 15);
+    setClientDiscountMode(DISCOUNT_MODES[data.clientDiscountMode] ? data.clientDiscountMode : 'percent');
     setClientDiscountPercent(data.clientDiscountPercent ?? 0);
+    setClientDiscountAmount(data.clientDiscountAmount ?? 0);
     setClientDiscountScope(data.clientDiscountScope || 'full');
     setTaxMode(data.taxMode || 'none');
     setVatRecalcScope('goods_all');
@@ -1536,7 +1551,9 @@ function App() {
         workItems,
         installPercent,
         managerCommissionRate,
+        clientDiscountMode,
         clientDiscountPercent,
+        clientDiscountAmount,
         clientDiscountScope,
         taxMode,
         vatRecalcScope,
@@ -1621,7 +1638,9 @@ function App() {
         workItems,
         otherExpenses,
         installPercent,
+        clientDiscountMode,
         clientDiscountPercent,
+        clientDiscountAmount,
         clientDiscountScope,
         taxMode,
         groupSettings,
@@ -1673,7 +1692,9 @@ function App() {
         workItems,
         otherExpenses,
         installPercent,
+        clientDiscountMode,
         clientDiscountPercent,
+        clientDiscountAmount,
         clientDiscountScope,
         taxMode,
         groupSettings,
@@ -2655,7 +2676,9 @@ function App() {
   useEffect(() => { localStorage.setItem('solar_workItems', JSON.stringify(workItems)); }, [workItems]);
   useEffect(() => { localStorage.setItem('solar_installPercent', JSON.stringify(installPercent)); }, [installPercent]);
   useEffect(() => { localStorage.setItem('solar_managerCommissionRate', JSON.stringify(managerCommissionRate)); }, [managerCommissionRate]);
+  useEffect(() => { localStorage.setItem('solar_clientDiscountMode', JSON.stringify(clientDiscountMode)); }, [clientDiscountMode]);
   useEffect(() => { localStorage.setItem('solar_clientDiscountPercent', JSON.stringify(clientDiscountPercent)); }, [clientDiscountPercent]);
+  useEffect(() => { localStorage.setItem('solar_clientDiscountAmount', JSON.stringify(clientDiscountAmount)); }, [clientDiscountAmount]);
   useEffect(() => { localStorage.setItem('solar_clientDiscountScope', JSON.stringify(clientDiscountScope)); }, [clientDiscountScope]);
   useEffect(() => { localStorage.setItem('solar_taxMode', JSON.stringify(taxMode)); }, [taxMode]);
   useEffect(() => { localStorage.setItem('solar_fopTaxPercent', JSON.stringify(fopTaxPercent)); }, [fopTaxPercent]);
@@ -2850,13 +2873,20 @@ function App() {
     const installationTotalUah = (installPercentAmountUsd * safeUsdRate) + workItemsSumUah;
     
     const finalTotalUsd = totals.sumUsd + installationTotalUsd + logisticsTotalUsd;
+    const discountMode = DISCOUNT_MODES[clientDiscountMode] ? clientDiscountMode : 'percent';
     const discountPercent = Math.max(0, toNumber(clientDiscountPercent, 0));
+    const discountAmount = Math.max(0, toNumber(clientDiscountAmount, 0));
     const discountScope = DISCOUNT_SCOPES[clientDiscountScope] ? clientDiscountScope : 'full';
     const discountBaseUsd =
       discountScope === 'goods' ? totals.sumUsd :
       discountScope === 'works' ? installationTotalUsd :
       finalTotalUsd;
-    const discountUsd = discountBaseUsd * (discountPercent / 100);
+    const rawDiscountUsd =
+      discountMode === 'usd' ? discountAmount :
+      discountMode === 'uah' ? (discountAmount / safeUsdRate) :
+      discountBaseUsd * (discountPercent / 100);
+    const discountUsd = Math.min(discountBaseUsd, rawDiscountUsd);
+    const effectiveDiscountPercent = discountBaseUsd > 0 ? (discountUsd / discountBaseUsd) * 100 : 0;
     const finalTotalWithDiscountUsd = Math.max(0, finalTotalUsd - discountUsd);
     const finalTotalUah = finalTotalUsd * safeUsdRate;
     const finalTotalEur = eurUsdRate > 0 ? (finalTotalUsd / eurUsdRate) : 0;
@@ -3003,7 +3033,10 @@ function App() {
         managerCommissionAfterTaxesUah,
         netMarginUsd,
         netMarginUah,
-        discountPercent,
+        discountMode,
+        discountPercent: effectiveDiscountPercent,
+        discountInputPercent: discountPercent,
+        discountAmount,
         discountUsd,
         discountScope,
         finalTotalUsd,
@@ -3022,7 +3055,9 @@ function App() {
     workItems,
     otherExpenses,
     managerCommissionRate,
+    clientDiscountMode,
     clientDiscountPercent,
+    clientDiscountAmount,
     clientDiscountScope,
     groupSettings,
     taxMode,
@@ -3061,7 +3096,9 @@ function App() {
     workItems,
     installPercent,
     managerCommissionRate,
+    clientDiscountMode,
     clientDiscountPercent,
+    clientDiscountAmount,
     clientDiscountScope,
     taxMode,
     fopTaxPercent,
@@ -5336,9 +5373,29 @@ function App() {
 
           <div>
             <h2>Разом до сплати (Клієнт)</h2>
-            <div className="input-group" style={{marginBottom: '1rem'}}>
-              <label>Знижка клієнту (%)</label>
-              <input type="number" value={clientDiscountPercent} onChange={(e) => setClientDiscountPercent(parseNumberInput(e.target.value))} />
+            <div style={{display: 'grid', gridTemplateColumns: '0.9fr 1.1fr', gap: '0.75rem', marginBottom: '1rem'}}>
+              <div className="input-group" style={{margin: 0}}>
+                <label>Тип знижки</label>
+                <select value={clientDiscountMode} onChange={(e) => setClientDiscountMode(e.target.value)}>
+                  {Object.entries(DISCOUNT_MODES).map(([key, label]) => (
+                    <option key={key} value={key}>{label}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="input-group" style={{margin: 0}}>
+                <label>Знижка клієнту ({DISCOUNT_MODES[clientDiscountMode] || '%'})</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={clientDiscountMode === 'percent' ? clientDiscountPercent : clientDiscountAmount}
+                  onChange={(e) => {
+                    const value = parseNumberInput(e.target.value);
+                    if (clientDiscountMode === 'percent') setClientDiscountPercent(value);
+                    else setClientDiscountAmount(value);
+                  }}
+                />
+              </div>
             </div>
             <div className="input-group" style={{marginBottom: '1rem'}}>
               <label>Застосувати знижку до</label>
@@ -5920,7 +5977,7 @@ function App() {
                   )}
                   {printMode === 'offer' && hasOfferDiscount && (
                     <tr className="print-total-row">
-                      <td colSpan="4" className="text-right" style={{fontWeight: 'bold', fontSize: '0.98rem'}}>ЗНИЖКА ({formatKw(toNumber(calculations.sums.discountPercent, 0))}%):</td>
+                      <td colSpan="4" className="text-right" style={{fontWeight: 'bold', fontSize: '0.98rem'}}>ЗНИЖКА:</td>
                       {showUsdInPrint && (
                         <td colSpan="2" className="text-right" style={{fontWeight: 'bold', fontSize: '0.98rem', whiteSpace: 'nowrap', lineHeight: 1.1}}>
                           -${discountUsdParts.whole},{discountUsdParts.frac}
