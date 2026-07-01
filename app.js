@@ -103,6 +103,8 @@ const DEFAULT_RATES = { eur: 51.35, usd: 44.10 };
 const DEFAULT_CLIENT_INFO = { name: "", address: "" };
 const DEFAULT_DOCUMENT_DETAILS = {
   specNumber: "",
+  documentTitle: "",
+  documentDate: "",
   contractFopName: "",
   contractNumber: "",
   contractDate: "",
@@ -3275,16 +3277,16 @@ function App() {
   const hasManualFinalSettlement = finalSettlementUsd > 0 || finalSettlementUah > 0;
   const finalSettlementTotalUsd = hasManualFinalSettlement ? finalSettlementUsd + (finalSettlementUah / usdRateForAdvance) : remainingUsd;
   const finalSettlementTotalUah = hasManualFinalSettlement ? finalSettlementUah + (finalSettlementUsd * usdRateForAdvance) : remainingUah;
-  const finalSettlementDateText = formatDocumentDate(finalSettlementDetails.date);
-  const finalSettlementNoteText = String(finalSettlementDetails.note || '').trim();
-  const finalSettlementMetaText = [finalSettlementDateText ? `від ${finalSettlementDateText}` : '', finalSettlementNoteText].filter(Boolean).join(' · ');
-  const finalSettlementLabel = `ОСТАТОЧНИЙ РОЗРАХУНОК ДО СПЛАТИ${finalSettlementMetaText ? ` (${finalSettlementMetaText})` : ''}:`;
+  const finalSettlementLabel = 'ОСТАТОЧНИЙ РОЗРАХУНОК:';
   const advanceUsdParts = splitMoneyParts(advanceTotalUsd);
   const advanceUahParts = splitMoneyParts(advanceTotalUah);
   const remainingUsdParts = splitMoneyParts(remainingUsd);
   const remainingUahParts = splitMoneyParts(remainingUah);
   const finalSettlementUsdParts = splitMoneyParts(finalSettlementTotalUsd);
   const finalSettlementUahParts = splitMoneyParts(finalSettlementTotalUah);
+  const defaultInvoiceTitle = isFinalSettlementInvoice ? 'ОСТАТОЧНИЙ РОЗРАХУНОК' : 'СПЕЦИФІКАЦІЯ ЗАМОВЛЕННЯ';
+  const invoiceDocumentTitle = String(normalizedDocumentDetails.documentTitle || '').trim() || defaultInvoiceTitle;
+  const invoiceDocumentDate = formatDocumentDate(normalizedDocumentDetails.documentDate) || new Date().toLocaleDateString('uk-UA');
   const documentContractLine = (() => {
     const parts = [];
     const contractNumber = String(normalizedDocumentDetails.contractNumber || '').trim();
@@ -3985,6 +3987,24 @@ function App() {
               value={documentDetails.specNumber || ''}
               onChange={(e) => setDocumentDetails({...documentDetails, specNumber: e.target.value})}
               placeholder="Напр. 12/06"
+            />
+          </div>
+          <div className="input-group" style={{margin: 0}}>
+            <label>Назва документа</label>
+            <input
+              type="text"
+              value={documentDetails.documentTitle || ''}
+              onChange={(e) => setDocumentDetails({...documentDetails, documentTitle: e.target.value})}
+              placeholder="Авто"
+            />
+          </div>
+          <div className="input-group" style={{margin: 0}}>
+            <label>Дата документа</label>
+            <input
+              type="text"
+              value={documentDetails.documentDate || ''}
+              onChange={(e) => setDocumentDetails({...documentDetails, documentDate: e.target.value})}
+              placeholder="дд.мм.рррр або авто"
             />
           </div>
           <div className="input-group" style={{margin: 0}}>
@@ -5729,8 +5749,8 @@ function App() {
                     <img src="./SolarLogo3.png" alt="Solar Service" style={{height: '88px', objectFit: 'contain'}} />
                   </div>
                   <div className="invoice-orange-line"></div>
-                  <h1 className="invoice-title">{isFinalSettlementInvoice ? 'СПЕЦИФІКАЦІЯ ЗАМОВЛЕННЯ / ОСТАТОЧНИЙ РОЗРАХУНОК' : 'СПЕЦИФІКАЦІЯ ЗАМОВЛЕННЯ'}</h1>
-                  <div className="invoice-doc-meta">№ {String(normalizedDocumentDetails.specNumber || '').trim() || '_______'} &nbsp;&nbsp; від {new Date().toLocaleDateString('uk-UA')} р.</div>
+                  <h1 className="invoice-title">{invoiceDocumentTitle}</h1>
+                  <div className="invoice-doc-meta">№ {String(normalizedDocumentDetails.specNumber || '').trim() || '_______'} &nbsp;&nbsp; від {invoiceDocumentDate} р.</div>
                   {documentContractLine && <div className="invoice-doc-meta">{documentContractLine}</div>}
                   <div className="invoice-orange-line" style={{marginBottom: '0.8rem'}}></div>
                 </>

@@ -363,10 +363,10 @@ async function exportToExcelFile({
     const hasManualFinalSettlement = finalSettlementUsd > 0 || finalSettlementUah > 0;
     const finalSettlementTotalUsd = hasManualFinalSettlement ? finalSettlementUsd + (finalSettlementUah / usdRateForAdvance) : remainingUsd;
     const finalSettlementTotalUah = hasManualFinalSettlement ? finalSettlementUah + (finalSettlementUsd * usdRateForAdvance) : remainingUah;
-    const finalSettlementDateText = formatContractDate(finalSettlementDetails.date);
-    const finalSettlementNoteText = String(finalSettlementDetails.note || '').trim();
-    const finalSettlementMetaText = [finalSettlementDateText ? `від ${finalSettlementDateText}` : '', finalSettlementNoteText].filter(Boolean).join(' · ');
-    const finalSettlementLabel = `Остаточний розрахунок до сплати${finalSettlementMetaText ? ` (${finalSettlementMetaText})` : ''}:`;
+    const finalSettlementLabel = 'Остаточний розрахунок:';
+    const defaultInvoiceTitle = isFinalSettlementInvoice ? 'ОСТАТОЧНИЙ РОЗРАХУНОК' : 'СПЕЦИФІКАЦІЯ ЗАМОВЛЕННЯ';
+    const invoiceDocumentTitle = String(safeDocumentDetails.documentTitle || '').trim() || defaultInvoiceTitle;
+    const invoiceDocumentDate = formatContractDate(safeDocumentDetails.documentDate) || new Date().toLocaleDateString('uk-UA');
     const buildContractLine = () => {
       const parts = [];
       const contractNumber = String(safeDocumentDetails.contractNumber || '').trim();
@@ -426,12 +426,12 @@ async function exportToExcelFile({
     await tryAddLogo();
 
     sheet.mergeCells('D2:H2');
-    sheet.getCell('D2').value = isFinalSettlementInvoice ? 'СПЕЦИФІКАЦІЯ ЗАМОВЛЕННЯ / ОСТАТОЧНИЙ РОЗРАХУНОК' : 'СПЕЦИФІКАЦІЯ ЗАМОВЛЕННЯ';
+    sheet.getCell('D2').value = invoiceDocumentTitle;
     sheet.getCell('D2').font = { name: 'Arial', size: 18, bold: false, color: { argb: 'FF153772' } };
     sheet.getCell('D2').alignment = { horizontal: 'left', vertical: 'middle' };
 
     sheet.mergeCells('D3:H3');
-    sheet.getCell('D3').value = `№ ${String(safeDocumentDetails.specNumber || '').trim() || '_______'}     від  ${new Date().toLocaleDateString('uk-UA')} р.`;
+    sheet.getCell('D3').value = `№ ${String(safeDocumentDetails.specNumber || '').trim() || '_______'}     від  ${invoiceDocumentDate} р.`;
     sheet.getCell('D3').font = { name: 'Arial', size: 10, color: { argb: 'FF666666' } };
     sheet.getCell('D3').alignment = { horizontal: 'left', vertical: 'bottom' };
 
