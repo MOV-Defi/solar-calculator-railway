@@ -1944,8 +1944,12 @@ function App() {
         const rawPercent = window.prompt('Вкажіть націнку на основне обладнання для "Excel ФОП без робіт", %', '10');
         if (rawPercent === null) return;
         const extraPercent = Math.max(0, toNumber(rawPercent, 10));
-        const splitByCategories = window.confirm('Показувати товари по категоріях?\n\nOK — по категоріях\nCancel — все в одній категорії');
-        const distributeServices = window.confirm('Розкидати роботи/логістику на матеріали?\n\nOK — так, розподілити по товарах\nCancel — ні, залишити окремим рядком');
+        const rawGroupMode = window.prompt('Як показувати товари?\n\n1 — по категоріях\n2 — все в одній категорії', '1');
+        if (rawGroupMode === null) return;
+        const rawServicesMode = window.prompt('Що робити з роботами/логістикою?\n\n1 — розкидати на матеріали\n2 — залишити окремим рядком', '1');
+        if (rawServicesMode === null) return;
+        const groupMode = String(rawGroupMode).trim() === '2' ? 'single' : 'categories';
+        const distributeServices = String(rawServicesMode).trim() !== '2';
         await exportBankOfferExcelFile({
           clientInfo,
           calculations,
@@ -1956,7 +1960,7 @@ function App() {
           workspaceHandle,
           projectFolderName: (currentProjectFolderName || projectName || '').trim(),
           extraPercent,
-          groupMode: splitByCategories ? 'categories' : 'single',
+          groupMode,
           distributeServices
         });
         return;
