@@ -1852,7 +1852,9 @@ async function exportBankOfferExcelFile({
   rates,
   workspaceHandle,
   projectFolderName,
-  extraPercent = 10
+  extraPercent = 10,
+  groupMode = 'categories',
+  distributeServices = false
 }) {
   try {
     if (typeof window.ExcelJS === 'undefined') {
@@ -1863,6 +1865,7 @@ async function exportBankOfferExcelFile({
     workbook.calcProperties = { fullCalcOnLoad: true, forceFullCalc: true };
     const sheet = workbook.addWorksheet('ФОП без робіт');
     const usdRate = Math.max(0.000001, toNumber(rates?.usd, 1));
+    const showCategories = groupMode !== 'single';
     const safeGroups = (calculations?.groups && typeof calculations.groups === 'object') ? calculations.groups : {};
     const orderedGroupKeys = buildExportGroupOrder(safeGroups);
 
@@ -1883,42 +1886,63 @@ async function exportBankOfferExcelFile({
       cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
     });
 
-    const mainRows = [];
-    const mainSet = new Set(['Основне обладнання']);
-    let otherTotalUah = 0;
+    const bankRows = [];
 
     orderedGroupKeys.forEach((groupKey) => {
       const items = Array.isArray(safeGroups[groupKey]) ? safeGroups[groupKey] : [];
-      const isMain = mainSet.has(groupKey);
       items.forEach((item) => {
         const name = String(item?.name || '').trim();
         const qty = Math.max(0, toNumber(item?.quantity, 0));
         if (!name || qty <= 0) return;
         const baseUah = toNumber(item?.sumUah, 0);
-        if (isMain) {
-          const boostedUah = baseUah * (1 + Math.max(0, toNumber(extraPercent, 0)) / 100);
-          mainRows.push({
-            name,
-            unit: item?.unit || 'шт.',
-            qty,
-            sumUah: boostedUah
-          });
-        } else {
-          otherTotalUah += baseUah;
-        }
+        if (baseUah <= 0) return;
+        const boostedUah = groupKey === 'Основне обладнання'
+          ? baseUah * (1 + Math.max(0, toNumber(extraPercent, 0)) / 100)
+          : baseUah;
+        bankRows.push({
+          groupKey: showCategories ? groupKey : 'Товари',
+          name,
+          unit: item?.unit || 'шт.',
+          qty,
+          sumUah: boostedUah
+        });
       });
     });
 
     const targetTotalUah = toNumber(calculations?.sums?.finalTotalWithDiscountUah, toNumber(calculations?.sums?.finalTotalUah, 0));
-    const mainBoostedTotalUah = mainRows.reduce((acc, row) => acc + toNumber(row.sumUah, 0), 0);
-    const residualUah = Math.max(0, targetTotalUah - mainBoostedTotalUah);
-    const aggregateOtherUah = residualUah > 0 ? residualUah : Math.max(0, otherTotalUah);
+    const bankRowsTotalUah = bankRows.reduce((acc, row) => acc + toNumber(row.sumUah, 0), 0);
+    const residualUah = Math.max(0, targetTotalUah - bankRowsTotalUah);
+    const serviceDistributedRows = (distributeServices && residualUah > 0 && bankRowsTotalUah > 0)
+      ? bankRows.map((row) => {
+        const base = toNumber(row.sumUah, 0);
+        const serviceShareUah = residualUah * base / bankRowsTotalUah;
+        return {
+          ...row,
+          serviceShareUah,
+          sumUah: base + serviceShareUah
+        };
+      })
+      : bankRows.map((row) => ({ ...row, serviceShareUah: 0 }));
+    const residualRowUah = distributeServices ? 0 : residualUah;
 
     let rowIdx = 2;
     const retailRows = [];
-    mainRows.forEach((row) => {
+    let lastGroupKey = '';
+    serviceDistributedRows.forEach((row) => {
+      if (row.groupKey !== lastGroupKey) {
+        const groupRow = sheet.getRow(rowIdx++);
+        sheet.mergeCells(`A${groupRow.number}:E${groupRow.number}`);
+        groupRow.getCell(1).value = row.groupKey;
+        groupRow.getCell(1).font = { bold: true, color: { argb: 'FF153772' } };
+        groupRow.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEFF2F7' } };
+        groupRow.getCell(1).alignment = { horizontal: 'left', vertical: 'middle' };
+        for (let c = 1; c <= 5; c += 1) {
+          groupRow.getCell(c).border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+        }
+        lastGroupKey = row.groupKey;
+      }
       const unitPrice = row.qty > 0 ? row.sumUah / row.qty : 0;
-      retailRows.push({ name: row.name, unit: row.unit, qty: row.qty, unitPriceUah: unitPrice, sumUah: row.sumUah });
+      retailRows.push({ groupKey: row.groupKey, name: row.name, unit: row.unit, qty: row.qty, unitPriceUah: unitPrice, sumUah: row.sumUah, serviceShareUah: row.serviceShareUah || 0 });
       const line = sheet.getRow(rowIdx++);
       line.getCell(1).value = row.name;
       line.getCell(2).value = row.unit;
@@ -1933,14 +1957,27 @@ async function exportBankOfferExcelFile({
       line.getCell(5).numFmt = '#,##0.00';
     });
 
-    if (aggregateOtherUah > 0) {
-      retailRows.push({ name: 'Комплектуючі матеріали і система кріплення', unit: 'шт.', qty: 1, unitPriceUah: aggregateOtherUah, sumUah: aggregateOtherUah });
+    if (residualRowUah > 0) {
+      const residualGroupKey = showCategories ? 'Додаткові витрати' : 'Товари';
+      retailRows.push({ groupKey: residualGroupKey, name: 'Комплектуючі матеріали і система кріплення', unit: 'шт.', qty: 1, unitPriceUah: residualRowUah, sumUah: residualRowUah, serviceShareUah: 0 });
+      if (residualGroupKey !== lastGroupKey) {
+        const groupRow = sheet.getRow(rowIdx++);
+        sheet.mergeCells(`A${groupRow.number}:E${groupRow.number}`);
+        groupRow.getCell(1).value = residualGroupKey;
+        groupRow.getCell(1).font = { bold: true, color: { argb: 'FF153772' } };
+        groupRow.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEFF2F7' } };
+        groupRow.getCell(1).alignment = { horizontal: 'left', vertical: 'middle' };
+        for (let c = 1; c <= 5; c += 1) {
+          groupRow.getCell(c).border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+        }
+        lastGroupKey = residualGroupKey;
+      }
       const line = sheet.getRow(rowIdx++);
       line.getCell(1).value = 'Комплектуючі матеріали і система кріплення';
       line.getCell(2).value = 'шт.';
       line.getCell(3).value = 1;
-      line.getCell(4).value = aggregateOtherUah;
-      line.getCell(5).value = aggregateOtherUah;
+      line.getCell(4).value = residualRowUah;
+      line.getCell(5).value = residualRowUah;
       line.eachCell((cell, i) => {
         cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
         cell.alignment = { horizontal: i === 1 ? 'left' : 'center', vertical: 'middle', wrapText: true };
@@ -1963,42 +2000,129 @@ async function exportBankOfferExcelFile({
     totalRow.getCell(5).border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
 
     const purchaseSheet = workbook.addWorksheet('Закупка');
-    purchaseSheet.columns = sheet.columns.map((c) => ({ width: c.width }));
-    const purchaseHeader = purchaseSheet.addRow(['Найменування устаткування / Модель', 'Од. вим.', 'Кіл-ть', 'Ціна, грн', 'Сума, грн.']);
-    purchaseHeader.height = 30;
+    purchaseSheet.columns = [
+      { width: 52 },
+      { width: 10 },
+      { width: 10 },
+      { width: 16 },
+      { width: 12 },
+      { width: 18 },
+      { width: 18 },
+      { width: 18 },
+      { width: 18 },
+      { width: 12 },
+      { width: 16 },
+      { width: 18 }
+    ];
+    const purchaseHeader = purchaseSheet.addRow([
+      'Найменування устаткування / Модель',
+      'Од. вим.',
+      'Кіл-ть',
+      'Матеріали, грн',
+      'Розподіл робіт/логістики, грн',
+      'База закупки, грн',
+      '% закупки',
+      'Ціна закупки, грн',
+      'Сума закупки, грн',
+      '% податку',
+      'Податок, грн',
+      'Разом з податком, грн'
+    ]);
+    purchaseHeader.height = 32;
     purchaseHeader.eachCell((cell) => {
-      cell.font = { bold: true, size: 12 };
+      cell.font = { bold: true, size: 11, color: { argb: 'FFFFFFFF' } };
       cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
-      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE5E7EB' } };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF153772' } };
       cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
     });
-    let purchaseRowIdx = 2;
-    const purchaseCoef = 0.52;
-    retailRows.forEach((r) => {
-      const purchaseUnit = toNumber(r.unitPriceUah, 0) * purchaseCoef;
-      const purchaseSum = toNumber(r.sumUah, 0) * purchaseCoef;
-      const line = purchaseSheet.getRow(purchaseRowIdx++);
-      line.getCell(1).value = r.name;
-      line.getCell(2).value = r.unit;
-      line.getCell(3).value = r.qty;
-      line.getCell(4).value = purchaseUnit;
-      line.getCell(5).value = purchaseSum;
-      line.eachCell((cell, i) => {
-        cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
-        cell.alignment = { horizontal: i === 1 ? 'left' : 'center', vertical: 'middle', wrapText: true };
-      });
-      line.getCell(4).numFmt = '#,##0.00';
-      line.getCell(5).numFmt = '#,##0.00';
+
+    const purchaseRows = retailRows.map((r) => {
+      const qty = Math.max(0, toNumber(r.qty, 0));
+      const saleSumUah = Math.max(0, toNumber(r.sumUah, 0) - toNumber(r.serviceShareUah, 0));
+      const serviceShareUah = Math.max(0, toNumber(r.serviceShareUah, 0));
+      const purchaseBaseUah = saleSumUah + serviceShareUah;
+      const purchasePercent = 52;
+      const purchaseSumUah = purchaseBaseUah * purchasePercent / 100;
+      const taxPercent = 7;
+      const taxUah = purchaseSumUah * taxPercent / 100;
+      return {
+        groupKey: r.groupKey || 'Товари',
+        name: r.name,
+        unit: r.unit,
+        qty,
+        saleSumUah,
+        serviceShareUah,
+        purchaseBaseUah,
+        purchasePercent,
+        purchaseUnitUah: qty > 0 ? purchaseSumUah / qty : 0,
+        purchaseSumUah,
+        taxPercent,
+        taxUah,
+        totalWithTaxUah: purchaseSumUah + taxUah
+      };
     });
-    purchaseRowIdx += 1;
-    const purchaseTotal = retailRows.reduce((acc, r) => acc + toNumber(r.sumUah, 0) * purchaseCoef, 0);
-    const purchaseTotalRow = purchaseSheet.getRow(purchaseRowIdx);
-    purchaseSheet.mergeCells(`A${purchaseRowIdx}:D${purchaseRowIdx}`);
-    purchaseTotalRow.getCell(1).value = 'Разом, грн. без ПДВ';
-    purchaseTotalRow.getCell(5).value = purchaseTotal;
-    purchaseTotalRow.getCell(1).font = { bold: true, size: 12 };
-    purchaseTotalRow.getCell(5).font = { bold: true, size: 12 };
-    purchaseTotalRow.getCell(5).numFmt = '#,##0.00';
+
+    let lastPurchaseGroupKey = '';
+    purchaseRows.forEach((item, idx) => {
+      if (item.groupKey !== lastPurchaseGroupKey) {
+        const groupRow = purchaseSheet.addRow([item.groupKey]);
+        purchaseSheet.mergeCells(`A${groupRow.number}:L${groupRow.number}`);
+        groupRow.getCell(1).font = { bold: true, color: { argb: 'FF153772' } };
+        groupRow.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEFF2F7' } };
+        groupRow.getCell(1).alignment = { horizontal: 'left', vertical: 'middle' };
+        for (let c = 1; c <= 12; c += 1) {
+          groupRow.getCell(c).border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+        }
+        lastPurchaseGroupKey = item.groupKey;
+      }
+
+      const row = purchaseSheet.addRow([
+        item.name,
+        item.unit,
+        item.qty,
+        item.saleSumUah,
+        item.serviceShareUah,
+        item.purchaseBaseUah,
+        item.purchasePercent,
+        item.purchaseUnitUah,
+        item.purchaseSumUah,
+        item.taxPercent,
+        item.taxUah,
+        item.totalWithTaxUah
+      ]);
+      row.height = 24;
+      row.eachCell((cell, col) => {
+        cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+        cell.alignment = { horizontal: col === 1 ? 'left' : 'right', vertical: 'middle', wrapText: col === 1 };
+        if (col !== 1 && col !== 2 && col !== 3 && col !== 7 && col !== 10) cell.numFmt = '#,##0.00';
+        if (col === 7 || col === 10) cell.numFmt = '0.00';
+        if (idx % 2 === 1) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } };
+      });
+    });
+
+    const totalRowStart = 2;
+    const totalRowEnd = purchaseSheet.rowCount;
+    const purchaseTotalRow = purchaseSheet.addRow([
+      'РАЗОМ',
+      '',
+      '',
+      { formula: `SUM(D${totalRowStart}:D${totalRowEnd})` },
+      { formula: `SUM(E${totalRowStart}:E${totalRowEnd})` },
+      { formula: `SUM(F${totalRowStart}:F${totalRowEnd})` },
+      '',
+      '',
+      { formula: `SUM(I${totalRowStart}:I${totalRowEnd})` },
+      '',
+      { formula: `SUM(K${totalRowStart}:K${totalRowEnd})` },
+      { formula: `SUM(L${totalRowStart}:L${totalRowEnd})` }
+    ]);
+    purchaseTotalRow.eachCell((cell, col) => {
+      cell.font = { bold: true, size: 12 };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFDE68A' } };
+      cell.border = { top: { style: 'medium' }, left: { style: 'thin' }, bottom: { style: 'medium' }, right: { style: 'thin' } };
+      cell.alignment = { horizontal: col === 1 ? 'left' : 'right', vertical: 'middle' };
+      if ([4, 5, 6, 9, 11, 12].includes(col)) cell.numFmt = '#,##0.00';
+    });
 
     const outBuffer = await workbook.xlsx.writeBuffer();
     const outBlob = new Blob([outBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
