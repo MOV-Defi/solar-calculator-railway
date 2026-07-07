@@ -3412,13 +3412,25 @@ function App() {
   const coverPowerKnown = coverMainPowerKw > 0;
   const coverSystemNameAuto = isBackupSystem ? "Безперебійна система" : "Гібридна станція";
   const coverSystemNameFinal = (coverSystemName || '').trim() || coverSystemNameAuto;
-  const coverMainTitle = coverPowerKnown ? `${coverSystemNameFinal} ${formatKw(coverMainPowerKw)} кВт` : coverSystemNameFinal;
+  const manualText = (value, fallback) => {
+    const text = String(value ?? '').trim();
+    return text || fallback;
+  };
+  const manualSolarPowerText = String(offerTechOverrides.solarPower ?? '').trim();
+  const manualInverterPowerText = String(offerTechOverrides.inverterPower ?? '').trim();
+  const manualBatteryCapacityText = String(offerTechOverrides.batteryCapacity ?? '').trim();
+  const coverMainPowerText = manualSolarPowerText
+    || (!hasSolar && manualInverterPowerText)
+    || (coverPowerKnown ? `${formatKw(coverMainPowerKw)} кВт` : "");
+  const coverMainTitle = coverMainPowerText ? `${coverSystemNameFinal} ${coverMainPowerText}` : coverSystemNameFinal;
   const coverAddress = clientInfo.address || "____________________";
-  const coverPowerLine = coverPowerKnown ? (formatKw(coverMainPowerKw) + " кВт") : "—";
-  const coverBatteryLine = batteryKwh > 0 ? (formatKw(batteryKwh) + " кВт·год") : (hasBattery ? (batteryRows.reduce((acc, row) => acc + toNumber(row.quantity, 0), 0) + " шт.") : "—");
-  const coverInverterLine = hasInverter
+  const coverPowerLine = coverMainPowerText || "—";
+  const coverBatteryLineAuto = batteryKwh > 0 ? (formatKw(batteryKwh) + " кВт·год") : (hasBattery ? (batteryRows.reduce((acc, row) => acc + toNumber(row.quantity, 0), 0) + " шт.") : "—");
+  const coverBatteryLine = manualBatteryCapacityText || coverBatteryLineAuto;
+  const coverInverterLineAuto = hasInverter
     ? (inverterPowerKw > 0 ? (formatKw(inverterPowerKw) + " кВт") : "—")
     : "—";
+  const coverInverterLine = manualInverterPowerText || coverInverterLineAuto;
   const coverSubtitle = (offerPurpose || DEFAULT_OFFER_PURPOSE).trim() || DEFAULT_OFFER_PURPOSE;
   const generationProfileKey = GENERATION_CITY_TO_PROFILE[generationLocation] || "south";
   const selectedGenerationProfile = GENERATION_REGION_PROFILES[generationProfileKey] || GENERATION_REGION_PROFILES.south;
@@ -3428,10 +3440,6 @@ function App() {
     0,
     Math.round(stationPowerKw * toNumber(selectedGenerationProfile.annualYieldKwhPerKw, 1300) * toNumber(selectedMountConfig.multiplier, 1))
   );
-  const manualText = (value, fallback) => {
-    const text = String(value ?? '').trim();
-    return text || fallback;
-  };
   const offerTechDisplay = {
     systemType: manualText(offerTechOverrides.systemType, coverSystemNameFinal),
     solarPower: manualText(offerTechOverrides.solarPower, `${formatKw(toNumber(calculations.stationPowerW, 0) / 1000)} кВт`),
