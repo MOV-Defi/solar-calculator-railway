@@ -3397,6 +3397,7 @@ function App() {
   };
   const showUsdInPrint = printCurrencyMode !== 'uah';
   const showUahInPrint = printCurrencyMode !== 'usd';
+  const printTableColumnCount = 4 + (showUsdInPrint ? 2 : 0) + (showUahInPrint ? 2 : 0);
   const solarPowerKw = toNumber(calculations.stationPowerW, 0) / 1000;
   const allRows = Object.values(calculations.groups).flat();
   const inverterRows = allRows.filter((row) => row && String(row.type || "").trim() === "Інвертор");
@@ -6045,17 +6046,11 @@ function App() {
                   </tr>
                   {printMode === 'offer' && showVatInOffer && (
                     <tr className="print-total-row">
-                      <td colSpan="4" className="text-right" style={{fontWeight: 'bold', fontSize: '0.9rem'}}>у тому числі ПДВ 20%:</td>
-                      {showUsdInPrint && (
-                        <td colSpan="2" className="text-right" style={{fontWeight: 'bold', fontSize: '0.9rem', whiteSpace: 'nowrap', lineHeight: 1.1}}>
-                          ${offerVatUsdParts.whole},{offerVatUsdParts.frac}
-                        </td>
-                      )}
-                      {showUahInPrint && (
-                        <td colSpan="2" className="text-right" style={{fontWeight: 'bold', fontSize: '0.9rem', whiteSpace: 'nowrap', lineHeight: 1.1}}>
-                          {offerVatUahParts.whole},{offerVatUahParts.frac} грн
-                        </td>
-                      )}
+                      <td colSpan={printTableColumnCount} className="text-right" style={{fontWeight: 'bold', fontSize: '0.9rem', lineHeight: 1.2}}>
+                        <span style={{marginRight: '0.75rem'}}>у тому числі ПДВ 20%:</span>
+                        {showUsdInPrint && <span style={{whiteSpace: 'nowrap', marginLeft: '0.75rem'}}>${offerVatUsdParts.whole},{offerVatUsdParts.frac}</span>}
+                        {showUahInPrint && <span style={{whiteSpace: 'nowrap', marginLeft: '0.75rem'}}>{offerVatUahParts.whole},{offerVatUahParts.frac} грн</span>}
+                      </td>
                     </tr>
                   )}
                   {printMode === 'invoice' && hasAdvance && advanceRowsForPrint.map((advance) => {
