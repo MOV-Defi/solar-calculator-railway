@@ -771,6 +771,7 @@ function App() {
   const [includeClientInOffer, setIncludeClientInOffer] = useState(() => getSaved('solar_includeClientInOffer', true));
   const [includeAddressInOffer, setIncludeAddressInOffer] = useState(() => getSaved('solar_includeAddressInOffer', true));
   const [showObjectTypeOnCover, setShowObjectTypeOnCover] = useState(() => getSaved('solar_showObjectTypeOnCover', false));
+  const [showVatInOffer, setShowVatInOffer] = useState(() => getSaved('solar_showVatInOffer', false));
   const [printCurrencyMode, setPrintCurrencyMode] = useState(() => getSaved('solar_printCurrencyMode', 'both')); // both | usd | uah
   const [offerTechOverrides, setOfferTechOverrides] = useState(() => ({
     ...DEFAULT_OFFER_TECH_OVERRIDES,
@@ -1287,6 +1288,7 @@ function App() {
     vatRecalcBackup,
     installPercentTaxUsd,
     autoInstallPercentEnabled,
+    showVatInOffer,
     calculationsSnapshot: calculations,
     groupSettings,
     autoMountingQuantity,
@@ -1380,6 +1382,7 @@ function App() {
     setVatRecalcBackup(data.vatRecalcBackup && typeof data.vatRecalcBackup === 'object' ? data.vatRecalcBackup : null);
     setInstallPercentTaxUsd(data.installPercentTaxUsd ?? 0);
     setAutoInstallPercentEnabled(typeof data.autoInstallPercentEnabled === 'boolean' ? data.autoInstallPercentEnabled : true);
+    setShowVatInOffer(typeof data.showVatInOffer === 'boolean' ? data.showVatInOffer : false);
     setGroupSettings(data.groupSettings && typeof data.groupSettings === 'object' ? migrateProtectionDisplayNames(data.groupSettings) : createDefaultGroupSettings());
     setAutoMountingQuantity(typeof data.autoMountingQuantity === 'boolean' ? data.autoMountingQuantity : true);
     setProjectType(data.projectType || 'commercial');
@@ -1425,6 +1428,7 @@ function App() {
     setVatRecalcScope(data.vatRecalcScope || 'goods_all');
     setVatRecalcApplied(Boolean(data.vatRecalcApplied));
     setVatRecalcBackup(data.vatRecalcBackup && typeof data.vatRecalcBackup === 'object' ? data.vatRecalcBackup : null);
+    setShowVatInOffer(typeof data.showVatInOffer === 'boolean' ? data.showVatInOffer : false);
     setModulePower(data.modulePower ?? 550);
     setGroupSettings(data.groupSettings && typeof data.groupSettings === 'object' ? migrateProtectionDisplayNames(data.groupSettings) : createDefaultGroupSettings());
     setProjectType(project.type || 'commercial');
@@ -1487,6 +1491,7 @@ function App() {
     setVatRecalcScope('goods_all');
     setVatRecalcApplied(false);
     setVatRecalcBackup(null);
+    setShowVatInOffer(typeof data.showVatInOffer === 'boolean' ? data.showVatInOffer : false);
     setGroupSettings(data.groupSettings && typeof data.groupSettings === 'object' ? migrateProtectionDisplayNames(data.groupSettings) : createDefaultGroupSettings());
     if (typeof data.autoMountingQuantity === 'boolean') {
       setAutoMountingQuantity(data.autoMountingQuantity);
@@ -1559,6 +1564,7 @@ function App() {
         vatRecalcScope,
         vatRecalcApplied,
         vatRecalcBackup,
+        showVatInOffer,
         groupSettings,
         autoMountingQuantity,
         projectFolderName: computedFolder,
@@ -2681,6 +2687,7 @@ function App() {
   useEffect(() => { localStorage.setItem('solar_includeClientInOffer', JSON.stringify(includeClientInOffer)); }, [includeClientInOffer]);
   useEffect(() => { localStorage.setItem('solar_includeAddressInOffer', JSON.stringify(includeAddressInOffer)); }, [includeAddressInOffer]);
   useEffect(() => { localStorage.setItem('solar_showObjectTypeOnCover', JSON.stringify(showObjectTypeOnCover)); }, [showObjectTypeOnCover]);
+  useEffect(() => { localStorage.setItem('solar_showVatInOffer', JSON.stringify(showVatInOffer)); }, [showVatInOffer]);
   useEffect(() => { localStorage.setItem('solar_printCurrencyMode', JSON.stringify(printCurrencyMode)); }, [printCurrencyMode]);
   useEffect(() => { localStorage.setItem('solar_offerTechOverrides', JSON.stringify(offerTechOverrides)); }, [offerTechOverrides]);
   useEffect(() => { localStorage.setItem('solar_offerWarrantyOverrides', JSON.stringify(offerWarrantyOverrides)); }, [offerWarrantyOverrides]);
@@ -3130,6 +3137,7 @@ function App() {
     vatRecalcBackup,
     installPercentTaxUsd,
     autoInstallPercentEnabled,
+    showVatInOffer,
     groupSettings,
     autoMountingQuantity,
     projectType,
@@ -3286,6 +3294,10 @@ function App() {
   const discountUsdParts = splitMoneyParts(calculations.sums.discountUsd || 0);
   const discountUahParts = splitMoneyParts((calculations.sums.discountUsd || 0) * toNumber(rates.usd, 0));
   const hasOfferDiscount = toNumber(calculations.sums.discountPercent, 0) > 0;
+  const offerVatUsd = toNumber(calculations.sums.finalTotalWithDiscountUsd, 0) * 20 / 120;
+  const offerVatUah = toNumber(calculations.sums.finalTotalWithDiscountUah, 0) * 20 / 120;
+  const offerVatUsdParts = splitMoneyParts(offerVatUsd);
+  const offerVatUahParts = splitMoneyParts(offerVatUah);
   const formatDocumentDate = (value) => {
     const raw = String(value || '').trim();
     if (!raw) return '';
@@ -4323,6 +4335,10 @@ function App() {
             <label style={{display: 'flex', alignItems: 'center', gap: '0.45rem', minHeight: '24px', gridColumn: '1 / span 2'}}>
               <input type="checkbox" checked={showObjectTypeOnCover} onChange={(e) => setShowObjectTypeOnCover(!!e.target.checked)} />
               <span>Тип об'єкта на титульній</span>
+            </label>
+            <label style={{display: 'flex', alignItems: 'center', gap: '0.45rem', minHeight: '24px', gridColumn: '1 / span 2'}}>
+              <input type="checkbox" checked={showVatInOffer} onChange={(e) => setShowVatInOffer(!!e.target.checked)} />
+              <span>Показувати “у тому числі ПДВ 20%”</span>
             </label>
           </div>
           <div style={{display: 'flex', alignItems: 'center', gap: '0.45rem', marginTop: '0.35rem'}}>
@@ -6027,6 +6043,21 @@ function App() {
                        </td>
                      )}
                   </tr>
+                  {printMode === 'offer' && showVatInOffer && (
+                    <tr className="print-total-row">
+                      <td colSpan="4" className="text-right" style={{fontWeight: 'bold', fontSize: '0.9rem'}}>у тому числі ПДВ 20%:</td>
+                      {showUsdInPrint && (
+                        <td colSpan="2" className="text-right" style={{fontWeight: 'bold', fontSize: '0.9rem', whiteSpace: 'nowrap', lineHeight: 1.1}}>
+                          ${offerVatUsdParts.whole},{offerVatUsdParts.frac}
+                        </td>
+                      )}
+                      {showUahInPrint && (
+                        <td colSpan="2" className="text-right" style={{fontWeight: 'bold', fontSize: '0.9rem', whiteSpace: 'nowrap', lineHeight: 1.1}}>
+                          {offerVatUahParts.whole},{offerVatUahParts.frac} грн
+                        </td>
+                      )}
+                    </tr>
+                  )}
                   {printMode === 'invoice' && hasAdvance && advanceRowsForPrint.map((advance) => {
                     const rowUsdParts = splitMoneyParts(advance.totalUsd);
                     const rowUahParts = splitMoneyParts(advance.totalUah);
