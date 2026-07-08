@@ -772,6 +772,7 @@ function App() {
   const [includeAddressInOffer, setIncludeAddressInOffer] = useState(() => getSaved('solar_includeAddressInOffer', true));
   const [showObjectTypeOnCover, setShowObjectTypeOnCover] = useState(() => getSaved('solar_showObjectTypeOnCover', false));
   const [showVatInOffer, setShowVatInOffer] = useState(() => getSaved('solar_showVatInOffer', false));
+  const [offerPrintNote, setOfferPrintNote] = useState(() => getSaved('solar_offerPrintNote', ''));
   const [printCurrencyMode, setPrintCurrencyMode] = useState(() => getSaved('solar_printCurrencyMode', 'both')); // both | usd | uah
   const [offerTechOverrides, setOfferTechOverrides] = useState(() => ({
     ...DEFAULT_OFFER_TECH_OVERRIDES,
@@ -1289,6 +1290,7 @@ function App() {
     installPercentTaxUsd,
     autoInstallPercentEnabled,
     showVatInOffer,
+    offerPrintNote,
     calculationsSnapshot: calculations,
     groupSettings,
     autoMountingQuantity,
@@ -1383,6 +1385,7 @@ function App() {
     setInstallPercentTaxUsd(data.installPercentTaxUsd ?? 0);
     setAutoInstallPercentEnabled(typeof data.autoInstallPercentEnabled === 'boolean' ? data.autoInstallPercentEnabled : true);
     setShowVatInOffer(typeof data.showVatInOffer === 'boolean' ? data.showVatInOffer : false);
+    setOfferPrintNote(typeof data.offerPrintNote === 'string' ? data.offerPrintNote : '');
     setGroupSettings(data.groupSettings && typeof data.groupSettings === 'object' ? migrateProtectionDisplayNames(data.groupSettings) : createDefaultGroupSettings());
     setAutoMountingQuantity(typeof data.autoMountingQuantity === 'boolean' ? data.autoMountingQuantity : true);
     setProjectType(data.projectType || 'commercial');
@@ -1429,6 +1432,7 @@ function App() {
     setVatRecalcApplied(Boolean(data.vatRecalcApplied));
     setVatRecalcBackup(data.vatRecalcBackup && typeof data.vatRecalcBackup === 'object' ? data.vatRecalcBackup : null);
     setShowVatInOffer(typeof data.showVatInOffer === 'boolean' ? data.showVatInOffer : false);
+    setOfferPrintNote(typeof data.offerPrintNote === 'string' ? data.offerPrintNote : '');
     setModulePower(data.modulePower ?? 550);
     setGroupSettings(data.groupSettings && typeof data.groupSettings === 'object' ? migrateProtectionDisplayNames(data.groupSettings) : createDefaultGroupSettings());
     setProjectType(project.type || 'commercial');
@@ -1492,6 +1496,7 @@ function App() {
     setVatRecalcApplied(false);
     setVatRecalcBackup(null);
     setShowVatInOffer(typeof data.showVatInOffer === 'boolean' ? data.showVatInOffer : false);
+    setOfferPrintNote(typeof data.offerPrintNote === 'string' ? data.offerPrintNote : '');
     setGroupSettings(data.groupSettings && typeof data.groupSettings === 'object' ? migrateProtectionDisplayNames(data.groupSettings) : createDefaultGroupSettings());
     if (typeof data.autoMountingQuantity === 'boolean') {
       setAutoMountingQuantity(data.autoMountingQuantity);
@@ -1565,6 +1570,7 @@ function App() {
         vatRecalcApplied,
         vatRecalcBackup,
         showVatInOffer,
+        offerPrintNote,
         groupSettings,
         autoMountingQuantity,
         projectFolderName: computedFolder,
@@ -1649,6 +1655,8 @@ function App() {
         clientDiscountAmount,
         clientDiscountScope,
         taxMode,
+        showVatInOffer,
+        offerPrintNote,
         groupSettings,
         autoMountingQuantity,
         offerSheets: offerSheetsForSave,
@@ -1703,6 +1711,8 @@ function App() {
         clientDiscountAmount,
         clientDiscountScope,
         taxMode,
+        showVatInOffer,
+        offerPrintNote,
         groupSettings,
         autoMountingQuantity,
         offerSheets: offerSheetsForSave,
@@ -2688,6 +2698,7 @@ function App() {
   useEffect(() => { localStorage.setItem('solar_includeAddressInOffer', JSON.stringify(includeAddressInOffer)); }, [includeAddressInOffer]);
   useEffect(() => { localStorage.setItem('solar_showObjectTypeOnCover', JSON.stringify(showObjectTypeOnCover)); }, [showObjectTypeOnCover]);
   useEffect(() => { localStorage.setItem('solar_showVatInOffer', JSON.stringify(showVatInOffer)); }, [showVatInOffer]);
+  useEffect(() => { localStorage.setItem('solar_offerPrintNote', JSON.stringify(offerPrintNote)); }, [offerPrintNote]);
   useEffect(() => { localStorage.setItem('solar_printCurrencyMode', JSON.stringify(printCurrencyMode)); }, [printCurrencyMode]);
   useEffect(() => { localStorage.setItem('solar_offerTechOverrides', JSON.stringify(offerTechOverrides)); }, [offerTechOverrides]);
   useEffect(() => { localStorage.setItem('solar_offerWarrantyOverrides', JSON.stringify(offerWarrantyOverrides)); }, [offerWarrantyOverrides]);
@@ -3138,6 +3149,7 @@ function App() {
     installPercentTaxUsd,
     autoInstallPercentEnabled,
     showVatInOffer,
+    offerPrintNote,
     groupSettings,
     autoMountingQuantity,
     projectType,
@@ -3298,6 +3310,7 @@ function App() {
   const offerVatUah = toNumber(calculations.sums.finalTotalWithDiscountUah, 0) * 20 / 120;
   const offerVatUsdParts = splitMoneyParts(offerVatUsd);
   const offerVatUahParts = splitMoneyParts(offerVatUah);
+  const normalizedOfferPrintNote = String(offerPrintNote || '').trim();
   const formatDocumentDate = (value) => {
     const raw = String(value || '').trim();
     if (!raw) return '';
@@ -4398,6 +4411,16 @@ function App() {
         <div className="input-group" style={{margin: 0}}>
           <label>QR посилання (сайт/менеджер)</label>
           <input type="text" value={coverQrUrl} onChange={(e) => setCoverQrUrl(e.target.value)} placeholder={DEFAULT_QR_URL} />
+        </div>
+        <div className="input-group" style={{margin: 0, gridColumn: '2 / span 3'}}>
+          <label>Текстова примітка в КП</label>
+          <textarea
+            value={offerPrintNote}
+            onChange={(e) => setOfferPrintNote(e.target.value)}
+            placeholder="Напр. Оплата в гривні перераховується на день оплати по курсу НБУ."
+            rows="2"
+            style={{resize: 'vertical', minHeight: '58px'}}
+          />
         </div>
         <div className="input-group" style={{margin: 0}}>
           <label>Менеджер у КП</label>
@@ -6104,6 +6127,11 @@ function App() {
                   )}
                </tfoot>
             </table>
+            {printMode === 'offer' && normalizedOfferPrintNote && (
+              <div style={{marginTop: '0.85rem', color: '#000', fontSize: '0.95rem', lineHeight: 1.35, whiteSpace: 'pre-wrap'}}>
+                <strong>Примітка:</strong> {normalizedOfferPrintNote}
+              </div>
+            )}
             {printMode === 'offer' && includeManagerInOffer && <OfferManagerBar />}
             </div>
 
