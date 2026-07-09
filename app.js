@@ -789,8 +789,8 @@ function App() {
   const [workspacePinned, setWorkspacePinned] = useState(false);
   const [workspacePath, setWorkspacePath] = useState(() => getSaved('solar_workspacePath', ''));
   const [uiTheme, setUiTheme] = useState(() => getSaved('solar_uiTheme', 'dark'));
-  const [layoutMode, setLayoutMode] = useState(() => getSaved('solar_layoutMode', 'classic'));
-  const [menuCollapsed, setMenuCollapsed] = useState(() => getSaved('solar_menuCollapsed', false));
+  const [layoutMode, setLayoutMode] = useState(() => getSaved('solar_layoutMode', 'sidebar'));
+  const [menuCollapsed, setMenuCollapsed] = useState(() => getSaved('solar_menuCollapsed', true));
   const [autoMountingQuantity, setAutoMountingQuantity] = useState(() => getSaved('solar_autoMountingQuantity', true));
   const [newCategoryName, setNewCategoryName] = useState("");
   const [authEmail, setAuthEmail] = useState(() => getSaved('solar_auth_email', ''));
@@ -835,6 +835,20 @@ function App() {
     const normalizedTheme = uiTheme === 'light' || uiTheme === 'gray' ? uiTheme : 'dark';
     document.documentElement.setAttribute('data-theme', normalizedTheme);
   }, [uiTheme]);
+  useEffect(() => {
+    if (localStorage.getItem('solar_designV2LayoutActivated')) return;
+    setLayoutMode('sidebar');
+    setMenuCollapsed(true);
+    localStorage.setItem('solar_designV2LayoutActivated', 'true');
+  }, []);
+  useEffect(() => {
+    if (!localStorage.getItem('solar_designV2Activated')) return;
+    if (localStorage.getItem('solar_designV2PaletteRestored')) return;
+    if (localStorage.getItem('solar_uiTheme') === JSON.stringify('light')) {
+      setUiTheme('dark');
+    }
+    localStorage.setItem('solar_designV2PaletteRestored', 'true');
+  }, []);
   useEffect(() => { localStorage.setItem('solar_layoutMode', JSON.stringify(layoutMode)); }, [layoutMode]);
   useEffect(() => { localStorage.setItem('solar_menuCollapsed', JSON.stringify(menuCollapsed)); }, [menuCollapsed]);
   useEffect(() => { localStorage.setItem('solar_autoMountingQuantity', JSON.stringify(autoMountingQuantity)); }, [autoMountingQuantity]);
@@ -2744,8 +2758,7 @@ function App() {
   useEffect(() => {
     const nodes = document.querySelectorAll('.top-shell [data-title]');
     nodes.forEach((el) => {
-      const tip = el.getAttribute('data-title');
-      if (tip && !el.getAttribute('title')) el.setAttribute('title', tip);
+      el.removeAttribute('title');
     });
   }, [layoutMode, menuCollapsed, clientMode, workspacePinned, workspaceHandle, templates.length]);
 
@@ -3906,7 +3919,7 @@ function App() {
   }, [showQuickCalc, quickCalcExpr]);
 
   return (
-    <div className={`container ${clientMode ? 'client-mode' : ''} ${layoutMode === 'sidebar' ? 'layout-sidebar' : 'layout-classic'} ${menuCollapsed ? 'menu-collapsed' : ''}`}>
+    <div className={`container design-v2 ${clientMode ? 'client-mode' : ''} ${layoutMode === 'sidebar' ? 'layout-sidebar' : 'layout-classic'} ${menuCollapsed ? 'menu-collapsed' : ''}`}>
       {Object.keys(productDatabase).map(cat => (
         <datalist key={cat} id={`db-${cat.replace(/\s+/g, '-')}`}>
           {productDatabase[cat].map(p => <option key={p} value={p} />)}
@@ -3924,47 +3937,53 @@ function App() {
           </div>
 
           <div className={`top-export ${isSidebarLayout ? 'sidebar-menu-group' : ''}`}>
-            <button
-              type="button"
-              className="secondary menu-toggle-btn menu-action-btn"
-              data-cat="toggle"
-              style={{background: menuCollapsed ? '#0f766e' : '#475569'}}
-              onClick={() => setMenuCollapsed(prev => !prev)}
-              data-title={menuToggleTitle}
-              aria-label={menuToggleTitle}
-            >
-              <span className="menu-toggle-arrow">{menuToggleSymbol}</span>
-            </button>
             {isSidebarLayout && <div className="sidebar-menu-title">Вигляд та експорт</div>}
-            <select
-              className="secondary theme-toggle-btn"
-              style={{width: '180px', padding: '0.8rem 1rem', background: uiTheme === 'dark' ? '#334155' : uiTheme === 'light' ? '#cbd5e1' : '#9ca3af'}}
-              value={uiTheme}
-              onChange={(e) => setUiTheme(e.target.value)}
-              data-title="Тема оформлення"
-            >
-              <option value="dark">Темна тема</option>
-              <option value="light">Світла тема</option>
-              <option value="gray">Сіра тема</option>
-            </select>
-            <select
-              className="secondary theme-toggle-btn"
-              style={{width: '170px', padding: '0.8rem 1rem', background: layoutMode === 'sidebar' ? '#0f766e' : '#334155'}}
-              value={layoutMode}
-              onChange={(e) => setLayoutMode(e.target.value)}
-              data-title="Режим меню"
-            >
-              <option value="classic">Класичний</option>
-              <option value="sidebar">Бокове меню</option>
-            </select>
-            <button type="button" className="secondary menu-action-btn" data-cat="export" style={{background: "#059669"}} onClick={() => exportToExcel("offer", "summary")} data-title="Excel (зведено)"><MenuBtnLabel icon="📊" label="Excel (зведено)" /></button>
-            <button type="button" className="secondary menu-action-btn" data-cat="export" style={{background: "#0f766e"}} onClick={() => exportToExcel("offer", "full")} data-title="Excel (повна)"><MenuBtnLabel icon="📗" label="Excel (повна)" /></button>
-            <button type="button" className="secondary menu-action-btn" data-cat="export" style={{background: "#14532d"}} onClick={() => exportToExcel("offer_tax_full")} data-title="Excel (повна + податки)"><MenuBtnLabel icon="🧮" label="Excel (повна + податки)" /></button>
-            <button type="button" className="secondary menu-action-btn" data-cat="export" style={{background: "#0b7285"}} onClick={() => exportToExcel("offer_bank")} data-title="Excel (ФОП без робіт)"><MenuBtnLabel icon="🏦" label="Excel (ФОП без робіт)" /></button>
-            <button type="button" className="secondary menu-action-btn" data-cat="export" style={{background: "#92400e"}} onClick={openPurchaseExportDialog} data-title="Excel закупка"><MenuBtnLabel icon="🛒" label="Excel закупка" /></button>
-            <button type="button" className="secondary menu-action-btn" data-cat="print" style={{background: '#7c3aed'}} onClick={() => setPrintMode('offer')} data-title="КП"><MenuBtnLabel icon="📄" label="КП" /></button>
-            <button type="button" className="secondary menu-action-btn" data-cat="print" style={{background: '#3b82f6'}} onClick={() => setPrintMode('invoice')} data-title="Накладна"><MenuBtnLabel icon="🧾" label="Накладна" /></button>
-            <button type="button" className="secondary menu-action-btn" data-cat="print" style={{background: '#1d4ed8'}} onClick={exportWarrantyDocx} data-title="Гарантійний талон"><MenuBtnLabel icon="🛡️" label="Гарантійний талон" /></button>
+            <div className="menu-group menu-group-view" data-group-title="Вигляд">
+              <button
+                type="button"
+                className="secondary menu-toggle-btn menu-action-btn"
+                data-cat="toggle"
+                style={{background: menuCollapsed ? '#0f766e' : '#475569'}}
+                onClick={() => setMenuCollapsed(prev => !prev)}
+                data-title={menuToggleTitle}
+                aria-label={menuToggleTitle}
+              >
+                <span className="menu-toggle-arrow">{menuToggleSymbol}</span>
+              </button>
+              <select
+                className="secondary theme-toggle-btn"
+                style={{width: '180px', padding: '0.8rem 1rem', background: uiTheme === 'dark' ? '#334155' : uiTheme === 'light' ? '#cbd5e1' : '#9ca3af'}}
+                value={uiTheme}
+                onChange={(e) => setUiTheme(e.target.value)}
+                data-title="Тема оформлення"
+              >
+                <option value="dark">Синя тема</option>
+                <option value="light">Світла тема</option>
+                <option value="gray">Сіра тема</option>
+              </select>
+              <select
+                className="secondary theme-toggle-btn"
+                style={{width: '170px', padding: '0.8rem 1rem', background: layoutMode === 'sidebar' ? '#0f766e' : '#334155'}}
+                value={layoutMode}
+                onChange={(e) => setLayoutMode(e.target.value)}
+                data-title="Режим меню"
+              >
+                <option value="classic">Класичний</option>
+                <option value="sidebar">Бокове меню</option>
+              </select>
+            </div>
+            <div className="menu-group menu-group-export" data-group-title="Excel">
+              <button type="button" className="secondary menu-action-btn" data-cat="export" style={{background: "#059669"}} onClick={() => exportToExcel("offer", "summary")} data-title="Excel (зведено)"><MenuBtnLabel icon="📊" label="Excel (зведено)" /></button>
+              <button type="button" className="secondary menu-action-btn" data-cat="export" style={{background: "#0f766e"}} onClick={() => exportToExcel("offer", "full")} data-title="Excel (повна)"><MenuBtnLabel icon="📗" label="Excel (повна)" /></button>
+              <button type="button" className="secondary menu-action-btn" data-cat="export" style={{background: "#14532d"}} onClick={() => exportToExcel("offer_tax_full")} data-title="Excel (повна + податки)"><MenuBtnLabel icon="🧮" label="Excel (повна + податки)" /></button>
+              <button type="button" className="secondary menu-action-btn" data-cat="export" style={{background: "#0b7285"}} onClick={() => exportToExcel("offer_bank")} data-title="Excel (ФОП без робіт)"><MenuBtnLabel icon="🏦" label="Excel (ФОП без робіт)" /></button>
+              <button type="button" className="secondary menu-action-btn" data-cat="export" style={{background: "#92400e"}} onClick={openPurchaseExportDialog} data-title="Excel закупка"><MenuBtnLabel icon="🛒" label="Excel закупка" /></button>
+            </div>
+            <div className="menu-group menu-group-print" data-group-title="Документи">
+              <button type="button" className="secondary menu-action-btn" data-cat="print" style={{background: '#7c3aed'}} onClick={() => setPrintMode('offer')} data-title="КП"><MenuBtnLabel icon="📄" label="КП" /></button>
+              <button type="button" className="secondary menu-action-btn" data-cat="print" style={{background: '#3b82f6'}} onClick={() => setPrintMode('invoice')} data-title="Накладна"><MenuBtnLabel icon="🧾" label="Накладна" /></button>
+              <button type="button" className="secondary menu-action-btn" data-cat="print" style={{background: '#1d4ed8'}} onClick={exportWarrantyDocx} data-title="Гарантійний талон"><MenuBtnLabel icon="🛡️" label="Гарантійний талон" /></button>
+            </div>
           </div>
         </div>
 
@@ -4311,139 +4330,142 @@ function App() {
           </button>
         </div>
         {!offerSettingsCollapsed && (
-        <div className="grid grid-cols-4" style={{gap: '0.75rem'}}>
-        <div className="input-group" style={{margin: 0}}>
-          <label>Підзаголовок КП</label>
-          <input type="text" value={offerPurpose} onChange={(e) => setOfferPurpose(e.target.value)} placeholder="для власних потреб / для підприємства / ..." />
-        </div>
-        <div className="input-group" style={{margin: 0}}>
-          <label>Назва системи для КП</label>
-          <input type="text" value={coverSystemName} onChange={(e) => setCoverSystemName(e.target.value)} placeholder={coverSystemNameAuto} />
-        </div>
-        <div className="input-group" style={{margin: 0}}>
-          <label>Тип титульної сторінки</label>
-          <select value={coverPageType} onChange={(e) => setCoverPageType(e.target.value)}>
-            <option value="">Пусто</option>
-            {COVER_PAGE_TYPES.map((type) => <option key={type} value={type}>{type}</option>)}
-          </select>
-        </div>
-        <div className="input-group" style={{margin: 0}}>
-          <label>Окремий лист у КП</label>
-          <div style={{display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '0.25rem 1rem', marginTop: '0.1rem'}}>
-            <label style={{display: 'flex', alignItems: 'center', gap: '0.45rem', minHeight: '24px'}}>
-              <input type="checkbox" checked={showOfferStationSheet} onChange={(e) => setShowOfferStationSheet(e.target.checked)} />
-              <span>“Дані станції”</span>
-            </label>
-            <label style={{display: 'flex', alignItems: 'center', gap: '0.45rem', minHeight: '24px'}}>
-              <input type="checkbox" checked={includeManagerInOffer} onChange={(e) => setIncludeManagerInOffer(!!e.target.checked)} />
-              <span>Дані менеджера</span>
-            </label>
-            <label style={{display: 'flex', alignItems: 'center', gap: '0.45rem', minHeight: '24px'}}>
-              <input type="checkbox" checked={includeClientInOffer} onChange={(e) => setIncludeClientInOffer(!!e.target.checked)} />
-              <span>Дані замовника</span>
-            </label>
-            <label style={{display: 'flex', alignItems: 'center', gap: '0.45rem', minHeight: '24px'}}>
-              <input type="checkbox" checked={includeAddressInOffer} onChange={(e) => setIncludeAddressInOffer(!!e.target.checked)} />
-              <span>Адреса об'єкта</span>
-            </label>
-            <label style={{display: 'flex', alignItems: 'center', gap: '0.45rem', minHeight: '24px', gridColumn: '1 / span 2'}}>
-              <input type="checkbox" checked={showObjectTypeOnCover} onChange={(e) => setShowObjectTypeOnCover(!!e.target.checked)} />
-              <span>Тип об'єкта на титульній</span>
-            </label>
-            <label style={{display: 'flex', alignItems: 'center', gap: '0.45rem', minHeight: '24px', gridColumn: '1 / span 2'}}>
-              <input type="checkbox" checked={showVatInOffer} onChange={(e) => setShowVatInOffer(!!e.target.checked)} />
-              <span>Показувати “у тому числі ПДВ 20%”</span>
-            </label>
+          <div className="offer-settings-layout">
+            <div className="offer-settings-head">
+              <div className="input-group" style={{margin: 0}}>
+                <label>Підзаголовок КП</label>
+                <input type="text" value={offerPurpose} onChange={(e) => setOfferPurpose(e.target.value)} placeholder="для власних потреб / для підприємства / ..." />
+              </div>
+              <div className="input-group" style={{margin: 0}}>
+                <label>Назва системи для КП</label>
+                <input type="text" value={coverSystemName} onChange={(e) => setCoverSystemName(e.target.value)} placeholder={coverSystemNameAuto} />
+              </div>
+            </div>
+
+            <div className="offer-settings-cards">
+              <section className="offer-settings-card offer-note-card">
+                <h3>Титульна</h3>
+                <div className="offer-settings-summary">
+                  <span>Тип: <strong>{coverPageType || 'Пусто'}</strong></span>
+                  <span>Об'єкт: <strong>{showObjectTypeOnCover ? 'Показувати' : 'Не показувати'}</strong></span>
+                  <span>Адреса: <strong>{includeAddressInOffer ? 'Показувати' : 'Не показувати'}</strong></span>
+                </div>
+                <div className="offer-settings-fields">
+                  <div className="input-group" style={{margin: 0}}>
+                    <label>Тип титульної сторінки</label>
+                    <select value={coverPageType} onChange={(e) => setCoverPageType(e.target.value)}>
+                      <option value="">Пусто</option>
+                      {COVER_PAGE_TYPES.map((type) => <option key={type} value={type}>{type}</option>)}
+                    </select>
+                  </div>
+                  <label className="offer-check"><input type="checkbox" checked={showObjectTypeOnCover} onChange={(e) => setShowObjectTypeOnCover(!!e.target.checked)} /> Тип об'єкта на титульній</label>
+                  <label className="offer-check"><input type="checkbox" checked={includeAddressInOffer} onChange={(e) => setIncludeAddressInOffer(!!e.target.checked)} /> Адреса об'єкта</label>
+                  <label className="offer-check"><input type="checkbox" checked={includeManagerInOffer} onChange={(e) => setIncludeManagerInOffer(!!e.target.checked)} /> Дані менеджера</label>
+                  <div className="input-group" style={{margin: 0}}>
+                    <label>QR посилання</label>
+                    <input type="text" value={coverQrUrl} onChange={(e) => setCoverQrUrl(e.target.value)} placeholder={DEFAULT_QR_URL} />
+                  </div>
+                </div>
+              </section>
+
+              <section className="offer-settings-card">
+                <h3>Друк</h3>
+                <div className="offer-settings-summary">
+                  <span>Валюта: <strong>{printCurrencyMode === 'both' ? 'USD + грн' : (printCurrencyMode === 'usd' ? 'Тільки USD' : 'Тільки грн')}</strong></span>
+                  <span>ПДВ: <strong>{showVatInOffer ? 'Показувати' : 'Не показувати'}</strong></span>
+                  <span>Лист станції: <strong>{showOfferStationSheet ? 'Так' : 'Ні'}</strong></span>
+                </div>
+                <div className="offer-settings-fields">
+                  <div className="input-group" style={{margin: 0}}>
+                    <label>Валюта в КП/накладній</label>
+                    <select value={printCurrencyMode} onChange={(e) => setPrintCurrencyMode(e.target.value)}>
+                      <option value="both">USD + грн (як зараз)</option>
+                      <option value="usd">Тільки USD</option>
+                      <option value="uah">Тільки грн</option>
+                    </select>
+                  </div>
+                  <label className="offer-check"><input type="checkbox" checked={showVatInOffer} onChange={(e) => setShowVatInOffer(!!e.target.checked)} /> Показувати “у тому числі ПДВ 20%”</label>
+                  <label className="offer-check"><input type="checkbox" checked={includeClientInOffer} onChange={(e) => setIncludeClientInOffer(!!e.target.checked)} /> Дані замовника</label>
+                  <label className="offer-check"><input type="checkbox" checked={showOfferStationSheet} onChange={(e) => setShowOfferStationSheet(e.target.checked)} /> Окремий лист “Дані станції”</label>
+                </div>
+              </section>
+
+              <section className="offer-settings-card">
+                <h3>Дані станції</h3>
+                <div className="offer-settings-summary">
+                  <span>Сонячне поле: <strong>{offerTechDisplay.solarPower}</strong></span>
+                  <span>Інвертор: <strong>{offerTechDisplay.inverterPower}</strong></span>
+                  <span>АКБ: <strong>{offerTechDisplay.batteryCapacity}</strong></span>
+                </div>
+                <div className="offer-settings-fields two-cols">
+                  <input type="text" value={offerTechOverrides.systemType || ''} onChange={(e) => setOfferTechOverrides(prev => ({...prev, systemType: e.target.value}))} placeholder="Тип системи" />
+                  <input type="text" value={offerTechOverrides.solarPower || ''} onChange={(e) => setOfferTechOverrides(prev => ({...prev, solarPower: e.target.value}))} placeholder="Потужність сонячного поля" />
+                  <input type="text" value={offerTechOverrides.inverterPower || ''} onChange={(e) => setOfferTechOverrides(prev => ({...prev, inverterPower: e.target.value}))} placeholder="Потужність інвертора" />
+                  <input type="text" value={offerTechOverrides.batteryCapacity || ''} onChange={(e) => setOfferTechOverrides(prev => ({...prev, batteryCapacity: e.target.value}))} placeholder="Ємність АКБ" />
+                  <input type="text" value={offerTechOverrides.annualGeneration || ''} onChange={(e) => setOfferTechOverrides(prev => ({...prev, annualGeneration: e.target.value}))} placeholder="Прогноз генерації/рік" />
+                  <select value={generationLocation} onChange={(e) => setGenerationLocation(e.target.value)}>
+                    {GENERATION_LOCATIONS.map((location) => <option key={location} value={location}>{location}</option>)}
+                  </select>
+                  <select value={generationMountType} onChange={(e) => setGenerationMountType(e.target.value)}>
+                    {Object.entries(GENERATION_MOUNT_TYPES).map(([value, cfg]) => <option key={value} value={value}>{cfg.label}</option>)}
+                  </select>
+                  <input type="number" step="0.01" value={energyTariffUah} onChange={(e) => setEnergyTariffUah(parseNumberInput(e.target.value))} placeholder="Тариф, грн/кВт·год" />
+                  <input type="number" step="0.1" value={typicalLoadKw} onChange={(e) => setTypicalLoadKw(parseNumberInput(e.target.value))} placeholder="Типове навантаження, кВт" />
+                </div>
+              </section>
+
+              <section className="offer-settings-card">
+                <h3>Гарантії</h3>
+                <div className="offer-settings-summary">
+                  <span>Модулі: <strong>{offerWarrantyDisplay.solarModules}</strong></span>
+                  <span>Інвертор: <strong>{offerWarrantyDisplay.inverter}</strong></span>
+                  <span>Монтаж: <strong>{offerWarrantyDisplay.installation}</strong></span>
+                </div>
+                <div className="offer-settings-fields two-cols">
+                  <input type="text" value={offerWarrantyOverrides.solarModules || ''} onChange={(e) => setOfferWarrantyOverrides(prev => ({...prev, solarModules: e.target.value}))} placeholder="Сонячні модулі" />
+                  <input type="text" value={offerWarrantyOverrides.inverter || ''} onChange={(e) => setOfferWarrantyOverrides(prev => ({...prev, inverter: e.target.value}))} placeholder="Інвертор" />
+                  <input type="text" value={offerWarrantyOverrides.batteries || ''} onChange={(e) => setOfferWarrantyOverrides(prev => ({...prev, batteries: e.target.value}))} placeholder="Акумуляторні системи" />
+                  <input type="text" value={offerWarrantyOverrides.installation || ''} onChange={(e) => setOfferWarrantyOverrides(prev => ({...prev, installation: e.target.value}))} placeholder="Монтажні роботи" />
+                  <input type="text" value={offerWarrantyOverrides.support || ''} onChange={(e) => setOfferWarrantyOverrides(prev => ({...prev, support: e.target.value}))} placeholder="Сервісна підтримка" />
+                </div>
+              </section>
+
+              <section className="offer-settings-card">
+                <h3>Менеджер</h3>
+                <div className="offer-settings-summary">
+                  <span>Менеджер: <strong>{managerNameLabel}</strong></span>
+                  <span>Телефон: <strong>{managerPhoneLabel || '—'}</strong></span>
+                </div>
+                <div className="offer-settings-fields">
+                  <div className="input-group" style={{margin: 0}}>
+                    <label>Менеджер у КП</label>
+                    <select value={selectedManagerId} onChange={(e) => setSelectedManagerId(e.target.value)}>
+                      {managerContacts.map((m) => <option key={m.id} value={m.id}>{m.name} · {m.phone}</option>)}
+                    </select>
+                  </div>
+                  <div className="offer-manager-add-row">
+                    <input type="text" value={newManagerName} onChange={(e) => setNewManagerName(e.target.value)} placeholder="Новий менеджер (ПІБ)" />
+                    <input type="text" value={newManagerPhone} onChange={(e) => setNewManagerPhone(e.target.value)} placeholder="+380..." />
+                    <button type="button" className="secondary" style={{background: '#0f766e'}} onClick={addManagerContact}>+ Додати</button>
+                  </div>
+                </div>
+              </section>
+
+              <section className="offer-settings-card">
+                <h3>Примітка в КП</h3>
+                <div className="offer-settings-summary">
+                  <span>Статус: <strong>{normalizedOfferPrintNote ? 'Заповнено' : 'Порожньо'}</strong></span>
+                </div>
+                <textarea
+                  value={offerPrintNote}
+                  onChange={(e) => setOfferPrintNote(e.target.value)}
+                  placeholder="Напр. Оплата в гривні перераховується на день оплати по курсу НБУ."
+                  rows="4"
+                  style={{resize: 'vertical'}}
+                />
+              </section>
+            </div>
           </div>
-          <div style={{display: 'flex', alignItems: 'center', gap: '0.45rem', marginTop: '0.35rem'}}>
-            <span style={{fontSize: '0.85rem', color: 'var(--text-muted)'}}>Валюта в КП/накладній:</span>
-            <select value={printCurrencyMode} onChange={(e) => setPrintCurrencyMode(e.target.value)} style={{maxWidth: '190px'}}>
-              <option value="both">USD + грн (як зараз)</option>
-              <option value="usd">Тільки USD</option>
-              <option value="uah">Тільки грн</option>
-            </select>
-          </div>
-        </div>
-        <div className="input-group" style={{margin: 0}}>
-          <label>Локація генерації</label>
-          <select value={generationLocation} onChange={(e) => setGenerationLocation(e.target.value)}>
-            {GENERATION_LOCATIONS.map((location) => (
-              <option key={location} value={location}>{location}</option>
-            ))}
-          </select>
-        </div>
-        <div className="input-group" style={{margin: 0}}>
-          <label>Тип встановлення</label>
-          <select value={generationMountType} onChange={(e) => setGenerationMountType(e.target.value)}>
-            {Object.entries(GENERATION_MOUNT_TYPES).map(([value, cfg]) => (
-              <option key={value} value={value}>{cfg.label}</option>
-            ))}
-          </select>
-        </div>
-        <div className="input-group" style={{margin: 0}}>
-          <label>Тариф, грн/кВт·год</label>
-          <input type="number" step="0.01" value={energyTariffUah} onChange={(e) => setEnergyTariffUah(parseNumberInput(e.target.value))} />
-        </div>
-        <div className="input-group" style={{margin: 0}}>
-          <label>Типове навантаження, кВт</label>
-          <input type="number" step="0.1" value={typicalLoadKw} onChange={(e) => setTypicalLoadKw(parseNumberInput(e.target.value))} />
-        </div>
-        <div className="input-group" style={{margin: 0, gridColumn: '1 / span 2'}}>
-          <label>Параметри КП вручну (пусто = авто)</label>
-          <div style={{display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '0.35rem'}}>
-            <input type="text" value={offerTechOverrides.systemType || ''} onChange={(e) => setOfferTechOverrides(prev => ({...prev, systemType: e.target.value}))} placeholder="Тип системи" />
-            <input type="text" value={offerTechOverrides.solarPower || ''} onChange={(e) => setOfferTechOverrides(prev => ({...prev, solarPower: e.target.value}))} placeholder="Потужність сонячного поля" />
-            <input type="text" value={offerTechOverrides.inverterPower || ''} onChange={(e) => setOfferTechOverrides(prev => ({...prev, inverterPower: e.target.value}))} placeholder="Потужність інвертора" />
-            <input type="text" value={offerTechOverrides.batteryCapacity || ''} onChange={(e) => setOfferTechOverrides(prev => ({...prev, batteryCapacity: e.target.value}))} placeholder="Ємність АКБ" />
-            <input type="text" value={offerTechOverrides.annualGeneration || ''} onChange={(e) => setOfferTechOverrides(prev => ({...prev, annualGeneration: e.target.value}))} placeholder="Прогноз генерації/рік" style={{gridColumn: '1 / span 2'}} />
-          </div>
-        </div>
-        <div className="input-group" style={{margin: 0, gridColumn: '3 / span 2'}}>
-          <label>Гарантії КП вручну (пусто = стандарт)</label>
-          <div style={{display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '0.35rem'}}>
-            <input type="text" value={offerWarrantyOverrides.solarModules || ''} onChange={(e) => setOfferWarrantyOverrides(prev => ({...prev, solarModules: e.target.value}))} placeholder="Сонячні модулі" />
-            <input type="text" value={offerWarrantyOverrides.inverter || ''} onChange={(e) => setOfferWarrantyOverrides(prev => ({...prev, inverter: e.target.value}))} placeholder="Інвертор" />
-            <input type="text" value={offerWarrantyOverrides.batteries || ''} onChange={(e) => setOfferWarrantyOverrides(prev => ({...prev, batteries: e.target.value}))} placeholder="Акумуляторні системи" />
-            <input type="text" value={offerWarrantyOverrides.installation || ''} onChange={(e) => setOfferWarrantyOverrides(prev => ({...prev, installation: e.target.value}))} placeholder="Монтажні роботи" />
-            <input type="text" value={offerWarrantyOverrides.support || ''} onChange={(e) => setOfferWarrantyOverrides(prev => ({...prev, support: e.target.value}))} placeholder="Сервісна підтримка" style={{gridColumn: '1 / span 2'}} />
-          </div>
-        </div>
-        <div className="input-group" style={{margin: 0}}>
-          <label>QR посилання (сайт/менеджер)</label>
-          <input type="text" value={coverQrUrl} onChange={(e) => setCoverQrUrl(e.target.value)} placeholder={DEFAULT_QR_URL} />
-        </div>
-        <div className="input-group" style={{margin: 0, gridColumn: '2 / span 3'}}>
-          <label>Текстова примітка в КП</label>
-          <textarea
-            value={offerPrintNote}
-            onChange={(e) => setOfferPrintNote(e.target.value)}
-            placeholder="Напр. Оплата в гривні перераховується на день оплати по курсу НБУ."
-            rows="2"
-            style={{resize: 'vertical', minHeight: '58px'}}
-          />
-        </div>
-        <div className="input-group" style={{margin: 0}}>
-          <label>Менеджер у КП</label>
-          <select value={selectedManagerId} onChange={(e) => setSelectedManagerId(e.target.value)}>
-            {managerContacts.map((m) => (
-              <option key={m.id} value={m.id}>{m.name} · {m.phone}</option>
-            ))}
-          </select>
-        </div>
-        <div className="input-group" style={{margin: 0}}>
-          <label>Новий менеджер (ПІБ)</label>
-          <input type="text" value={newManagerName} onChange={(e) => setNewManagerName(e.target.value)} placeholder="Напр. Олег Мінаков" />
-        </div>
-        <div className="input-group" style={{margin: 0}}>
-          <label>Телефон менеджера</label>
-          <input type="text" value={newManagerPhone} onChange={(e) => setNewManagerPhone(e.target.value)} placeholder="+380..." />
-        </div>
-        <div className="input-group" style={{margin: 0, display: 'flex', alignItems: 'flex-end'}}>
-          <button type="button" className="secondary" style={{width: '100%', background: '#0f766e'}} onClick={addManagerContact}>
-            + Додати менеджера
-          </button>
-        </div>
-        </div>
         )}
       </div>
 
@@ -5193,6 +5215,7 @@ function App() {
               </tbody>
             </table>
             <div
+              className="install-percent-card"
               style={{
                 width: '100%',
                 marginTop: '0.9rem',
@@ -5681,6 +5704,36 @@ function App() {
           </div>
         </div>
       </div>
+      </div>
+
+      <div className="finance-bottom-bar no-print">
+        <div className="finance-bottom-item primary">
+          <span>До сплати</span>
+          <strong>{formatMoney(calculations.sums.finalTotalWithDiscountUah)} грн</strong>
+        </div>
+        <div className="finance-bottom-item finance-bottom-context">
+          <span>Клієнт</span>
+          <strong>{clientInfo.name || 'Без клієнта'}</strong>
+        </div>
+        <div className="finance-bottom-item finance-bottom-context">
+          <span>Станція</span>
+          <strong>{coverMainTitle}</strong>
+        </div>
+        <div className="finance-bottom-item">
+          <span>USD</span>
+          <strong>${formatMoney(calculations.sums.finalTotalWithDiscountUsd)}</strong>
+        </div>
+        <div className="finance-bottom-item internal-only">
+          <span>Маржа</span>
+          <strong>{toNumber(calculations.sums.marginFromOrderPercent, 0).toFixed(1)}%</strong>
+        </div>
+        <div className="finance-bottom-item internal-only">
+          <span>Чистий прибуток</span>
+          <strong>${formatMoney(calculations.sums.netMarginUsd || 0)}</strong>
+        </div>
+        <button type="button" className="finance-bottom-action" onClick={() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' })}>
+          Деталі фінансів
+        </button>
       </div>
 
       <button
