@@ -45,6 +45,14 @@ const DISCOUNT_MODES = {
   usd: "$",
   uah: "грн"
 };
+const DEFAULT_GREEN_TARIFF_SETTINGS = {
+  showInOffer: false,
+  tariffCurrency: "uah",
+  tariff: 0,
+  annualExpensesUah: 0,
+  paybackBaseMode: "discounted",
+  manualBaseUah: 0
+};
 const DEFAULT_OFFER_TECH_OVERRIDES = {
   systemType: "",
   solarPower: "",
@@ -316,6 +324,11 @@ const toNumber = (value, fallback = 0) => {
 };
 const parseNumberInput = (value) => (value === "" ? "" : toNumber(value, 0));
 const roundMarkupForInput = (value) => (value === "" ? "" : Math.round(toNumber(value, 0) * 10) / 10);
+const parseFirstNumber = (value, fallback = 0) => {
+  const source = String(value ?? '').replace(/\s/g, '').replace(',', '.');
+  const match = source.match(/-?\d+(?:\.\d+)?/);
+  return match ? toNumber(match[0], fallback) : fallback;
+};
 const normalizeForMatch = (value) => String(value || "").toLowerCase().replace(/[^a-z0-9а-яіїєґ]/g, "");
 const isPvCableProductRow = (item) => {
   const name = normalizeForMatch(item?.name || "");
@@ -567,6 +580,10 @@ function App() {
   const [generationMountType, setGenerationMountType] = useState(() => getSaved('solar_generationMountType', 'roof'));
   const [energyTariffUah, setEnergyTariffUah] = useState(() => getSaved('solar_energyTariffUah', 4.32));
   const [typicalLoadKw, setTypicalLoadKw] = useState(() => getSaved('solar_typicalLoadKw', 2));
+  const [greenTariffSettings, setGreenTariffSettings] = useState(() => ({
+    ...DEFAULT_GREEN_TARIFF_SETTINGS,
+    ...(getSaved('solar_greenTariffSettings', {}) || {})
+  }));
   const [coverQrUrl, setCoverQrUrl] = useState(() => getSaved('solar_coverQrUrl', DEFAULT_QR_URL));
   const [offerSettingsCollapsed, setOfferSettingsCollapsed] = useState(() => getSaved('solar_offerSettingsCollapsed', false));
   const [managerContacts, setManagerContacts] = useState(() => {
@@ -1274,6 +1291,7 @@ function App() {
     generationMountType,
     energyTariffUah,
     typicalLoadKw,
+    greenTariffSettings,
     coverQrUrl,
     managerContacts,
     selectedManagerId,
@@ -1365,6 +1383,7 @@ function App() {
     setGenerationMountType(typeof data.generationMountType === 'string' ? data.generationMountType : 'roof');
     setEnergyTariffUah(data.energyTariffUah ?? 4.32);
     setTypicalLoadKw(data.typicalLoadKw ?? 2);
+    setGreenTariffSettings({ ...DEFAULT_GREEN_TARIFF_SETTINGS, ...(data.greenTariffSettings && typeof data.greenTariffSettings === 'object' ? data.greenTariffSettings : {}) });
     setCoverQrUrl(typeof data.coverQrUrl === 'string' ? data.coverQrUrl : DEFAULT_QR_URL);
     setManagerContacts(loadedManagers);
     setSelectedManagerId(
@@ -1425,6 +1444,7 @@ function App() {
     setGenerationMountType(typeof data.generationMountType === 'string' ? data.generationMountType : 'roof');
     setEnergyTariffUah(data.energyTariffUah ?? 4.32);
     setTypicalLoadKw(data.typicalLoadKw ?? 2);
+    setGreenTariffSettings({ ...DEFAULT_GREEN_TARIFF_SETTINGS, ...(data.greenTariffSettings && typeof data.greenTariffSettings === 'object' ? data.greenTariffSettings : {}) });
     setCoverQrUrl(typeof data.coverQrUrl === 'string' ? data.coverQrUrl : DEFAULT_QR_URL);
     setManagerContacts(loadedManagers);
     setSelectedManagerId(
@@ -1493,6 +1513,7 @@ function App() {
     setGenerationMountType(typeof data.generationMountType === 'string' ? data.generationMountType : 'roof');
     setEnergyTariffUah(data.energyTariffUah ?? 4.32);
     setTypicalLoadKw(data.typicalLoadKw ?? 2);
+    setGreenTariffSettings({ ...DEFAULT_GREEN_TARIFF_SETTINGS, ...(data.greenTariffSettings && typeof data.greenTariffSettings === 'object' ? data.greenTariffSettings : {}) });
     setCoverQrUrl(typeof data.coverQrUrl === 'string' ? data.coverQrUrl : DEFAULT_QR_URL);
     setManagerContacts(loadedManagers);
     setSelectedManagerId(
@@ -1567,6 +1588,7 @@ function App() {
         generationMountType,
         energyTariffUah,
         typicalLoadKw,
+        greenTariffSettings,
         coverQrUrl,
         managerContacts,
         selectedManagerId,
@@ -1658,6 +1680,7 @@ function App() {
         generationMountType,
         energyTariffUah,
         typicalLoadKw,
+        greenTariffSettings,
         coverQrUrl,
         managerContacts,
         selectedManagerId,
@@ -1714,6 +1737,7 @@ function App() {
         generationMountType,
         energyTariffUah,
         typicalLoadKw,
+        greenTariffSettings,
         coverQrUrl,
         managerContacts,
         selectedManagerId,
@@ -2703,6 +2727,7 @@ function App() {
   useEffect(() => { localStorage.setItem('solar_generationMountType', JSON.stringify(generationMountType)); }, [generationMountType]);
   useEffect(() => { localStorage.setItem('solar_energyTariffUah', JSON.stringify(energyTariffUah)); }, [energyTariffUah]);
   useEffect(() => { localStorage.setItem('solar_typicalLoadKw', JSON.stringify(typicalLoadKw)); }, [typicalLoadKw]);
+  useEffect(() => { localStorage.setItem('solar_greenTariffSettings', JSON.stringify(greenTariffSettings)); }, [greenTariffSettings]);
   useEffect(() => { localStorage.setItem('solar_coverQrUrl', JSON.stringify(coverQrUrl)); }, [coverQrUrl]);
   useEffect(() => { localStorage.setItem('solar_offerSettingsCollapsed', JSON.stringify(offerSettingsCollapsed)); }, [offerSettingsCollapsed]);
   useEffect(() => { localStorage.setItem('solar_currentProjectFolderName', JSON.stringify(currentProjectFolderName)); }, [currentProjectFolderName]);
@@ -3133,6 +3158,7 @@ function App() {
     generationMountType,
     energyTariffUah,
     typicalLoadKw,
+    greenTariffSettings,
     coverQrUrl,
     managerContacts,
     selectedManagerId,
@@ -3503,6 +3529,28 @@ function App() {
   const paybackYears = annualSavingsUah > 0
     ? (toNumber(calculations.sums.finalTotalWithDiscountUah, 0) / annualSavingsUah)
     : 0;
+  const greenTariffGenerationKwh = Math.max(0, parseFirstNumber(offerTechOverrides.annualGeneration, annualGenerationKwh));
+  const greenTariffRate = Math.max(0, toNumber(greenTariffSettings.tariff, 0));
+  const greenTariffCurrency = greenTariffSettings.tariffCurrency === 'eur' ? 'eur' : 'uah';
+  const greenTariffRateUah = greenTariffCurrency === 'eur'
+    ? greenTariffRate * Math.max(0, toNumber(rates.eur, 0))
+    : greenTariffRate;
+  const greenTariffGrossIncomeUah = hasSolar
+    ? Math.max(0, greenTariffGenerationKwh * greenTariffRateUah)
+    : 0;
+  const greenTariffNetIncomeUah = Math.max(0, greenTariffGrossIncomeUah - Math.max(0, toNumber(greenTariffSettings.annualExpensesUah, 0)));
+  const greenTariffBaseUah = greenTariffSettings.paybackBaseMode === 'manual'
+    ? Math.max(0, toNumber(greenTariffSettings.manualBaseUah, 0))
+    : (greenTariffSettings.paybackBaseMode === 'full'
+      ? Math.max(0, toNumber(calculations.sums.finalTotalUah, 0))
+      : Math.max(0, toNumber(calculations.sums.finalTotalWithDiscountUah, 0)));
+  const greenTariffPaybackYears = greenTariffNetIncomeUah > 0
+    ? (greenTariffBaseUah / greenTariffNetIncomeUah)
+    : 0;
+  const showGreenTariffInOffer = !!greenTariffSettings.showInOffer && hasSolar && greenTariffRate > 0 && greenTariffGenerationKwh > 0;
+  const greenTariffLabel = greenTariffCurrency === 'eur'
+    ? `€${formatKw(greenTariffRate)} / кВт·год`
+    : `${formatKw(greenTariffRate)} грн/кВт·год`;
   const autonomyHours = (batteryKwh > 0 && toNumber(typicalLoadKw, 0) > 0)
     ? (batteryKwh / toNumber(typicalLoadKw, 0))
     : 0;
@@ -4343,7 +4391,7 @@ function App() {
             </div>
 
             <div className="offer-settings-cards">
-              <section className="offer-settings-card offer-note-card">
+              <section className="offer-settings-card">
                 <h3>Титульна</h3>
                 <div className="offer-settings-summary">
                   <span>Тип: <strong>{coverPageType || 'Пусто'}</strong></span>
@@ -4415,6 +4463,67 @@ function App() {
               </section>
 
               <section className="offer-settings-card">
+                <h3>Зелений тариф</h3>
+                <div className="offer-settings-summary">
+                  <span>Публікація: <strong>{greenTariffSettings.showInOffer ? 'Показувати' : 'Не показувати'}</strong></span>
+                  <span>Дохід/рік: <strong>{greenTariffGrossIncomeUah > 0 ? `${formatMoney(greenTariffGrossIncomeUah)} грн` : '—'}</strong></span>
+                  <span>Окупність: <strong>{greenTariffPaybackYears > 0 ? `${formatKw(greenTariffPaybackYears)} років` : '—'}</strong></span>
+                </div>
+                <div className="offer-settings-fields two-cols">
+                  <label className="offer-check" style={{gridColumn: '1 / -1'}}>
+                    <input
+                      type="checkbox"
+                      checked={!!greenTariffSettings.showInOffer}
+                      onChange={(e) => setGreenTariffSettings(prev => ({...prev, showInOffer: !!e.target.checked}))}
+                    />
+                    Показувати зелений тариф у КП
+                  </label>
+                  <select
+                    value={greenTariffSettings.tariffCurrency || 'uah'}
+                    onChange={(e) => setGreenTariffSettings(prev => ({...prev, tariffCurrency: e.target.value}))}
+                  >
+                    <option value="uah">Тариф у грн</option>
+                    <option value="eur">Тариф у €</option>
+                  </select>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.001"
+                    value={greenTariffSettings.tariff ?? 0}
+                    onChange={(e) => setGreenTariffSettings(prev => ({...prev, tariff: parseNumberInput(e.target.value)}))}
+                    placeholder="Зелений тариф"
+                  />
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={greenTariffSettings.annualExpensesUah ?? 0}
+                    onChange={(e) => setGreenTariffSettings(prev => ({...prev, annualExpensesUah: parseNumberInput(e.target.value)}))}
+                    placeholder="Витрати на рік, грн"
+                  />
+                  <select
+                    value={greenTariffSettings.paybackBaseMode || 'discounted'}
+                    onChange={(e) => setGreenTariffSettings(prev => ({...prev, paybackBaseMode: e.target.value}))}
+                  >
+                    <option value="discounted">База: сума КП після знижки</option>
+                    <option value="full">База: повна сума КП</option>
+                    <option value="manual">База: вручну</option>
+                  </select>
+                  {greenTariffSettings.paybackBaseMode === 'manual' && (
+                    <input
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={greenTariffSettings.manualBaseUah ?? 0}
+                      onChange={(e) => setGreenTariffSettings(prev => ({...prev, manualBaseUah: parseNumberInput(e.target.value)}))}
+                      placeholder="База окупності, грн"
+                      style={{gridColumn: '1 / -1'}}
+                    />
+                  )}
+                </div>
+              </section>
+
+              <section className="offer-settings-card">
                 <h3>Гарантії</h3>
                 <div className="offer-settings-summary">
                   <span>Модулі: <strong>{offerWarrantyDisplay.solarModules}</strong></span>
@@ -4451,7 +4560,7 @@ function App() {
                 </div>
               </section>
 
-              <section className="offer-settings-card">
+              <section className="offer-settings-card offer-note-card">
                 <h3>Примітка в КП</h3>
                 <div className="offer-settings-summary">
                   <span>Статус: <strong>{normalizedOfferPrintNote ? 'Заповнено' : 'Порожньо'}</strong></span>
@@ -5959,6 +6068,8 @@ function App() {
                     <div><span>Потужність інвертора:</span><strong>{offerTechDisplay.inverterPower}</strong></div>
                     <div><span>Ємність АКБ:</span><strong>{offerTechDisplay.batteryCapacity}</strong></div>
                     {(hasSolar || String(offerTechOverrides.annualGeneration || '').trim()) && <div><span>Прогноз генерації/рік:</span><strong>{offerTechDisplay.annualGeneration}</strong></div>}
+                    {showGreenTariffInOffer && <div><span>Дохід за зеленим тарифом/рік:</span><strong>{formatMoney(greenTariffGrossIncomeUah)} грн</strong></div>}
+                    {showGreenTariffInOffer && <div><span>Окупність за зеленим тарифом:</span><strong>{greenTariffPaybackYears > 0 ? `${formatKw(greenTariffPaybackYears)} років` : '—'}</strong></div>}
                   </div>
                 </div>
                 <div className="offer-top-card">
@@ -6286,6 +6397,22 @@ function App() {
                         <div><span>Типове навантаження:</span><strong>{formatKw(toNumber(typicalLoadKw, 0))} кВт</strong></div>
                       </div>
                     </div>
+                    {showGreenTariffInOffer && (
+                      <div className="offer-station-economics-card green-tariff-print-card">
+                        <h3>Зелений тариф</h3>
+                        <div className="offer-station-list">
+                          <div><span>Річна генерація:</span><strong>{formatMoney(greenTariffGenerationKwh).replace(',00', '')} кВт·год</strong></div>
+                          <div><span>Тариф:</span><strong>{greenTariffLabel}</strong></div>
+                          {greenTariffCurrency === 'eur' && <div><span>Курс EUR:</span><strong>{formatMoney(toNumber(rates.eur, 0))} грн</strong></div>}
+                          <div><span>Дохід/рік:</span><strong>{formatMoney(greenTariffGrossIncomeUah)} грн</strong></div>
+                          {toNumber(greenTariffSettings.annualExpensesUah, 0) > 0 && <div><span>Чистий дохід/рік:</span><strong>{formatMoney(greenTariffNetIncomeUah)} грн</strong></div>}
+                          <div><span>Окупність:</span><strong>{greenTariffPaybackYears > 0 ? `${formatKw(greenTariffPaybackYears)} років` : '—'}</strong></div>
+                        </div>
+                        <div className="offer-green-tariff-note">
+                          Розрахунок є орієнтовним та залежить від фактичної генерації, умов підключення і чинного тарифу.
+                        </div>
+                      </div>
+                    )}
                     {coverQrSrc && (
                       <div className="offer-station-qr-card">
                         <img src={coverQrSrc} alt="QR контакт" crossOrigin="anonymous" />

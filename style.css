@@ -1469,6 +1469,22 @@ body.pdf-capture-invoice .invoice-print-container .print-total-row td {
   font-size: 0.95rem;
 }
 
+.green-tariff-print-card {
+  background: #ecfdf3;
+  border-color: #bfe8cf;
+}
+
+.green-tariff-print-card h3 {
+  color: #147044;
+}
+
+.offer-green-tariff-note {
+  margin-top: 0.38rem;
+  color: #475569;
+  font-size: 0.72rem;
+  line-height: 1.28;
+}
+
 .offer-station-qr-card {
   border: 1px solid #d5dbe6;
   border-radius: 10px;
