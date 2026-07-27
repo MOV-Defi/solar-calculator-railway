@@ -238,13 +238,16 @@ const buildCalculationsForOfferSheetExport = (snap = {}, summary = {}) => {
 
   const materialsSumUsd = Object.values(groupTotalsUsd).reduce((acc, value) => acc + toNumber(value, 0), 0);
   const materialsCostUsd = Object.values(groupCostTotalsUsd).reduce((acc, value) => acc + toNumber(value, 0), 0);
+  const usdRate = Math.max(0.000001, toNumber(rates?.usd, 1));
   const workItemsSumUsd = processedWorkItems.reduce((acc, row) => acc + toNumber(row?.sumUsd, 0), 0);
-  const workItemsCostUsd = processedWorkItems.reduce((acc, row) => acc + toNumber(row?.costUsd, 0), 0);
+  const workItemsBaseCostUsd = processedWorkItems.reduce((acc, row) => acc + toNumber(row?.costUsd, 0), 0);
+  const installerCostTotals = calculateInstallerCostsForExport(snap?.installerCosts, usdRate);
+  const installerCostsUsd = toNumber(installerCostTotals.totalUsd, 0);
+  const workItemsCostUsd = workItemsBaseCostUsd + installerCostsUsd;
   const otherCostsUsd = processedOtherExpenses.reduce((acc, row) => acc + toNumber(row?.sumUsd, 0), 0);
   const otherCostsCostUsd = processedOtherExpenses.reduce((acc, row) => acc + toNumber(row?.costUsd, 0), 0);
   const installPercentAmountUsd = materialsSumUsd * (Math.max(0, toNumber(snap?.installPercent, 0)) / 100);
   const finalTotalUsd = materialsSumUsd + workItemsSumUsd + otherCostsUsd + installPercentAmountUsd;
-  const usdRate = Math.max(0.000001, toNumber(rates?.usd, 1));
   const discountMode = ['percent', 'usd', 'uah'].includes(snap?.clientDiscountMode) ? snap.clientDiscountMode : 'percent';
   const discountPercent = Math.max(0, toNumber(snap?.clientDiscountPercent, 0));
   const discountAmount = Math.max(0, toNumber(snap?.clientDiscountAmount, 0));
@@ -261,6 +264,9 @@ const buildCalculationsForOfferSheetExport = (snap = {}, summary = {}) => {
   const effectiveDiscountPercent = discountBaseUsd > 0 ? (discountUsd / discountBaseUsd) * 100 : 0;
   const finalTotalWithDiscountUsd = Math.max(0, finalTotalUsd - discountUsd);
   const orderCostUsd = materialsCostUsd + workItemsCostUsd + otherCostsCostUsd;
+  const taxMode = snap?.taxMode || 'none';
+  const taxesFromSummaryUsd = taxMode === 'none' ? 0 : toNumber(summary?.taxesUsd, 0);
+  const fallbackGrossMarginBeforeTaxesUsd = Math.max(0, finalTotalWithDiscountUsd - orderCostUsd);
 
   return {
     groups,
@@ -272,7 +278,7 @@ const buildCalculationsForOfferSheetExport = (snap = {}, summary = {}) => {
     workItemsSumUsd,
     otherCostsUsd,
     stationPowerW: toNumber(summary?.stationPowerW, calcInstalledPowerW(groups, toNumber(snap?.modulePower, 0))),
-    taxMode: snap?.taxMode || 'none',
+    taxMode,
     sums: {
       materialsSumUsd,
       installPercentAmountUsd,
@@ -287,9 +293,14 @@ const buildCalculationsForOfferSheetExport = (snap = {}, summary = {}) => {
       finalTotalWithDiscountUsd,
       finalTotalWithDiscountUah: finalTotalWithDiscountUsd * usdRate,
       orderCostUsd,
-      grossMarginBeforeTaxesUsd: toNumber(summary?.grossMarginBeforeTaxesUsd, Math.max(0, finalTotalWithDiscountUsd - orderCostUsd)),
-      taxesUsd: toNumber(summary?.taxesUsd, 0),
-      taxesUah: toNumber(summary?.taxesUsd, 0) * usdRate,
+      workItemsCostUsd,
+      workItemsBaseCostUsd,
+      installerCostsUsd,
+      installerCostsUah: toNumber(installerCostTotals.totalUah, 0),
+      installerCostTotals,
+      grossMarginBeforeTaxesUsd: toNumber(summary?.grossMarginBeforeTaxesUsd, fallbackGrossMarginBeforeTaxesUsd),
+      taxesUsd: taxesFromSummaryUsd,
+      taxesUah: taxesFromSummaryUsd * usdRate,
       marginAfterTaxesUsd: toNumber(summary?.marginAfterTaxUsd, 0),
       marginAfterTaxesUah: toNumber(summary?.marginAfterTaxUsd, 0) * usdRate,
       marginAfterTaxUsd: toNumber(summary?.marginAfterTaxUsd, 0),
@@ -2306,3 +2317,430 @@ async function exportPurchaseExcelFile({
 }
 
 window.exportPurchaseExcelFile = exportPurchaseExcelFile;
+
+const normalizeInstallerCostsForExport = (source = {}) => {
+  const data = source && typeof source === 'object' ? source : {};
+  const makeRows = (rows, fallback) => (Array.isArray(rows) && rows.length > 0 ? rows : fallback).map((row) => ({ ...row }));
+  const workSections = (Array.isArray(data.workSections) ? data.workSections : []).map((section, sIdx) => ({
+    title: section?.title || `Розділ ${sIdx + 1}`,
+    items: (Array.isArray(section?.items) ? section.items : []).map((row, idx) => ({
+      name: row?.name || '',
+      unit: row?.unit || '',
+      priceUah: toNumber(row?.priceUah, 0),
+      quantity: toNumber(row?.quantity, 0),
+      id: row?.id || `work_${sIdx}_${idx}`
+    }))
+  }));
+  return {
+    title: String(data.title || '').trim(),
+    days: Math.max(0, toNumber(data.days, 1)),
+    employees: Math.max(0, toNumber(data.employees, 1)),
+    panelCount: Math.max(0, toNumber(data.panelCount, 0)),
+    panelPower: Math.max(0, toNumber(data.panelPower, 0)),
+    workSections,
+    transport: makeRows(data.transport, [
+      { name: 'Дорога туди', distanceKm: 0, pricePerKmUah: 0, trips: 1 },
+      { name: 'Дорога назад', distanceKm: 0, pricePerKmUah: 0, trips: 1 },
+      { name: "Переїзди на об'єкті", distanceKm: 0, pricePerKmUah: 0, trips: 1 }
+    ]),
+    accommodation: makeRows(data.accommodation, [
+      { name: 'Готель / оренда квартири', nights: 'auto', costPerNightUah: 0, people: 'auto' }
+    ]),
+    food: makeRows(data.food, [
+      { name: 'Харчування', days: 'auto', costPerDayUah: 0, people: 'auto' },
+      { name: 'Кава / снеки / інше', days: 'auto', costPerDayUah: 0, people: 'auto' }
+    ]),
+    other: makeRows(data.other, [
+      { name: 'Добові', amountUah: 0, quantity: 1 },
+      { name: "Мобільний зв'язок / інтернет", amountUah: 0, quantity: 1 },
+      { name: 'Представницькі витрати', amountUah: 0, quantity: 1 },
+      { name: 'Інше', amountUah: 0, quantity: 1 }
+    ])
+  };
+};
+
+const calculateInstallerCostsForExport = (source = {}, usdRate = 1) => {
+  const data = normalizeInstallerCostsForExport(source);
+  const safeUsdRate = Math.max(0.000001, toNumber(usdRate, 1));
+  const days = Math.max(0, toNumber(data.days, 0));
+  const employees = Math.max(0, toNumber(data.employees, 0));
+  const autoNights = Math.max(0, days - 1);
+  const worksUah = data.workSections.reduce((sectionAcc, section) => (
+    sectionAcc + (section.items || []).reduce((acc, row) => acc + Math.max(0, toNumber(row.priceUah, 0)) * Math.max(0, toNumber(row.quantity, 0)), 0)
+  ), 0);
+  const transportUah = data.transport.reduce((acc, row) => (
+    acc + (Math.max(0, toNumber(row.distanceKm, 0)) * Math.max(0, toNumber(row.pricePerKmUah, 0)) * Math.max(0, toNumber(row.trips, 0)))
+  ), 0);
+  const accommodationUah = data.accommodation.reduce((acc, row) => {
+    const nights = row.nights === 'auto' ? autoNights : Math.max(0, toNumber(row.nights, 0));
+    const people = row.people === 'auto' ? employees : Math.max(0, toNumber(row.people, 0));
+    return acc + (nights * Math.max(0, toNumber(row.costPerNightUah, 0)) * people);
+  }, 0);
+  const foodUah = data.food.reduce((acc, row) => {
+    const rowDays = row.days === 'auto' ? days : Math.max(0, toNumber(row.days, 0));
+    const people = row.people === 'auto' ? employees : Math.max(0, toNumber(row.people, 0));
+    return acc + (rowDays * Math.max(0, toNumber(row.costPerDayUah, 0)) * people);
+  }, 0);
+  const otherUah = data.other.reduce((acc, row) => (
+    acc + (Math.max(0, toNumber(row.amountUah, 0)) * Math.max(0, toNumber(row.quantity, 0)))
+  ), 0);
+  const tripUah = transportUah + accommodationUah + foodUah + otherUah;
+  const totalUah = worksUah + tripUah;
+
+  return {
+    worksUah,
+    tripUah,
+    transportUah,
+    accommodationUah,
+    foodUah,
+    otherUah,
+    totalUah,
+    totalUsd: totalUah / safeUsdRate
+  };
+};
+
+async function exportInstallerCostsExcelFile({
+  clientInfo,
+  calculations,
+  installerCosts,
+  rates = {},
+  workspaceHandle,
+  projectFolderName
+}) {
+  try {
+    if (typeof window.ExcelJS === 'undefined') {
+      throw new Error('Бібліотека ExcelJS не завантажена. Спробуйте оновити сторінку.');
+    }
+
+    const data = normalizeInstallerCostsForExport(installerCosts);
+    const workbook = new window.ExcelJS.Workbook();
+    workbook.calcProperties = { fullCalcOnLoad: true, forceFullCalc: true };
+    const workSheet = workbook.addWorksheet('Монтажні роботи');
+    const sheet = workbook.addWorksheet('Відрядження');
+    workSheet.columns = [
+      { width: 8 },
+      { width: 64 },
+      { width: 12 },
+      { width: 14 },
+      { width: 12 },
+      { width: 18 }
+    ];
+    workSheet.getColumn(8).width = 28;
+    workSheet.getColumn(9).width = 18;
+    sheet.columns = [
+      { width: 34 },
+      { width: 14 },
+      { width: 16 },
+      { width: 14 },
+      { width: 18 }
+    ];
+
+    const colors = {
+      title: 'FF1F4E79',
+      section: 'FFF4B183',
+      input: 'FFFFF2CC',
+      formula: 'FFE2F0D9',
+      total: 'FFFFC000',
+      final: 'FFFF0000',
+      white: 'FFFFFFFF'
+    };
+    const moneyFmt = '#,##0.00';
+    const thinBorder = {
+      top: { style: 'thin' },
+      left: { style: 'thin' },
+      bottom: { style: 'thin' },
+      right: { style: 'thin' }
+    };
+    const styleRow = (row, fillArgb = colors.white, bold = false) => {
+      row.eachCell((cell, col) => {
+        cell.border = thinBorder;
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: fillArgb } };
+        cell.font = { bold, size: 11, color: { argb: 'FF000000' } };
+        cell.alignment = { horizontal: col === 1 ? 'left' : 'right', vertical: 'middle', wrapText: true };
+        if (col > 1) cell.numFmt = moneyFmt;
+      });
+    };
+    const addSection = (title) => {
+      const row = sheet.addRow([title]);
+      sheet.mergeCells(row.number, 1, row.number, 5);
+      const cell = row.getCell(1);
+      cell.font = { bold: true, size: 12, color: { argb: 'FF000000' } };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: colors.section } };
+      cell.alignment = { horizontal: 'left', vertical: 'middle' };
+      cell.border = thinBorder;
+      return row.number;
+    };
+    const addHeader = (headers) => {
+      const row = sheet.addRow(headers);
+      row.eachCell((cell) => {
+        cell.font = { bold: true, size: 10, color: { argb: 'FFFFFFFF' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: colors.title } };
+        cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+        cell.border = thinBorder;
+      });
+      return row.number;
+    };
+
+    workSheet.mergeCells('A1:F1');
+    workSheet.getCell('A1').value = 'ПЕРЕЛІК МОНТАЖНИХ РОБІТ - СОНЯЧНА ЕЛЕКТРОСТАНЦІЯ';
+    workSheet.getCell('A1').font = { bold: true, size: 14, color: { argb: 'FFFFFFFF' } };
+    workSheet.getCell('A1').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: colors.title } };
+    workSheet.getCell('A1').alignment = { horizontal: 'center', vertical: 'middle' };
+    workSheet.getRow(1).height = 28;
+    workSheet.addRow([]);
+    const workHeader = workSheet.addRow(['№', 'Найменування роботи', 'Од. вим.', 'Ціна, грн', 'Кількість', 'Вартість, грн']);
+    workHeader.eachCell((cell) => {
+      cell.font = { bold: true, size: 10, color: { argb: 'FFFFFFFF' } };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: colors.title } };
+      cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+      cell.border = thinBorder;
+    });
+
+    const workTotalRows = [];
+    data.workSections.forEach((section) => {
+      const sectionRow = workSheet.addRow([section.title]);
+      workSheet.mergeCells(sectionRow.number, 1, sectionRow.number, 6);
+      sectionRow.getCell(1).font = { bold: true, size: 11 };
+      sectionRow.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: colors.section } };
+      sectionRow.getCell(1).border = thinBorder;
+      const startRow = workSheet.lastRow.number + 1;
+      (section.items || []).forEach((item, idx) => {
+        const rowNumber = workSheet.lastRow.number + 1;
+        const row = workSheet.addRow([
+          idx + 1,
+          item.name || '',
+          item.unit || '',
+          toNumber(item.priceUah, 0),
+          toNumber(item.quantity, 0),
+          { formula: `IF(E${rowNumber}<>"",D${rowNumber}*E${rowNumber},0)` }
+        ]);
+        row.eachCell((cell, col) => {
+          cell.border = thinBorder;
+          cell.alignment = { horizontal: col === 2 ? 'left' : 'right', vertical: 'middle', wrapText: col === 2 };
+          if ([4, 6].includes(col)) cell.numFmt = moneyFmt;
+          if (col === 5) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: colors.input } };
+          if (col === 6) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: colors.formula } };
+        });
+      });
+      const endRow = workSheet.lastRow.number;
+      const totalRow = workSheet.addRow([`РАЗОМ: ${section.title}`, '', '', '', '', { formula: `SUM(F${startRow}:F${endRow})` }]);
+      workSheet.mergeCells(totalRow.number, 1, totalRow.number, 5);
+      totalRow.eachCell((cell, col) => {
+        cell.font = { bold: true };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: colors.total } };
+        cell.border = thinBorder;
+        cell.alignment = { horizontal: col === 1 ? 'right' : 'right', vertical: 'middle' };
+        if (col === 6) cell.numFmt = moneyFmt;
+      });
+      workTotalRows.push(totalRow.number);
+      workSheet.addRow([]);
+    });
+    const finalWorkRow = workSheet.addRow([
+      'ЗАГАЛЬНА ВАРТІСТЬ РОБІТ',
+      '',
+      '',
+      '',
+      '',
+      { formula: workTotalRows.length ? workTotalRows.map((row) => `F${row}`).join('+') : '0', result: toNumber(calculations?.sums?.installerCostTotals?.worksUah ?? calculations?.installerCostTotals?.worksUah, 0) }
+    ]);
+    workSheet.mergeCells(finalWorkRow.number, 1, finalWorkRow.number, 5);
+    finalWorkRow.eachCell((cell, col) => {
+      cell.font = { bold: true, size: 12, color: { argb: 'FFFFFFFF' } };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: colors.final } };
+      cell.border = thinBorder;
+      cell.alignment = { horizontal: col === 1 ? 'right' : 'right', vertical: 'middle' };
+      if (col === 6) cell.numFmt = moneyFmt;
+    });
+
+    const kwRows = [
+      ['РОЗРАХУНОК ЗА 1 кВт', ''],
+      ['Кількість панелей, шт', data.panelCount],
+      ['Потужність панелі, Вт', data.panelPower],
+      ['Заг. потужність, кВт', { formula: 'IF(I6<>"",I6*I7/1000,0)' }],
+      ['Заг. вартість робіт, грн', { formula: `F${finalWorkRow.number}` }],
+      ['Вартість за 1 кВт, грн', { formula: 'IFERROR(I9/I8,0)' }],
+      ['Курс, грн/$', Math.max(0, toNumber(rates?.usd, 0))],
+      ['Вартість за 1 кВт, $', { formula: 'IFERROR(I10/I11,0)' }]
+    ];
+    kwRows.forEach((rowData, idx) => {
+      const rowNumber = 5 + idx;
+      workSheet.getCell(`H${rowNumber}`).value = rowData[0];
+      workSheet.getCell(`I${rowNumber}`).value = rowData[1];
+      ['H', 'I'].forEach((col) => {
+        const cell = workSheet.getCell(`${col}${rowNumber}`);
+        cell.border = thinBorder;
+        cell.alignment = { horizontal: col === 'H' ? 'left' : 'right', vertical: 'middle', wrapText: true };
+        cell.font = { bold: idx === 0 || col === 'H', color: { argb: idx === 0 ? 'FFFFFFFF' : 'FF000000' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: idx === 0 ? colors.title : (col === 'I' && [1, 2, 6].includes(idx) ? colors.input : colors.formula) } };
+        if (col === 'I' && idx > 0) {
+          cell.numFmt = idx === 1 ? '0' : ([2, 3, 6].includes(idx) ? '0.00' : moneyFmt);
+        }
+      });
+    });
+
+    sheet.mergeCells('A1:E1');
+    sheet.getCell('A1').value = 'РОЗРАХУНОК ВИТРАТ НА ВІДРЯДЖЕННЯ';
+    sheet.getCell('A1').font = { bold: true, size: 14, color: { argb: 'FFFFFFFF' } };
+    sheet.getCell('A1').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: colors.title } };
+    sheet.getCell('A1').alignment = { horizontal: 'center', vertical: 'middle' };
+    sheet.getRow(1).height = 26;
+    sheet.addRow([]);
+
+    const infoRows = [
+      ['Об’єкт / місто', data.title || clientInfo?.address || ''],
+      ['Кількість днів', data.days],
+      ['Кількість монтажників', data.employees],
+      ['Курс USD, грн', Math.max(0, toNumber(rates?.usd, 0))]
+    ];
+    infoRows.forEach(([label, value]) => {
+      const row = sheet.addRow([label, value]);
+      sheet.mergeCells(row.number, 2, row.number, 5);
+      row.getCell(1).font = { bold: true };
+      row.getCell(2).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: colors.input } };
+      row.eachCell((cell) => {
+        cell.border = thinBorder;
+        cell.alignment = { horizontal: cell.col === 1 ? 'left' : 'left', vertical: 'middle' };
+      });
+    });
+    sheet.addRow([]);
+
+    addSection('Транспорт');
+    addHeader(['Опис', 'Км', 'грн/км', 'Рейсів', 'Сума, грн']);
+    const transportStart = sheet.lastRow.number + 1;
+    data.transport.forEach((item) => {
+      const row = sheet.addRow([
+        item.name || '',
+        toNumber(item.distanceKm, 0),
+        toNumber(item.pricePerKmUah, 0),
+        toNumber(item.trips, 0),
+        { formula: `B${sheet.lastRow.number + 1}*C${sheet.lastRow.number + 1}*D${sheet.lastRow.number + 1}` }
+      ]);
+      styleRow(row, colors.white);
+      row.getCell(2).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: colors.input } };
+      row.getCell(3).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: colors.input } };
+      row.getCell(4).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: colors.input } };
+      row.getCell(5).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: colors.formula } };
+    });
+    const transportEnd = sheet.lastRow.number;
+    const transportTotalRow = sheet.addRow(['Всього транспорт', '', '', '', { formula: `SUM(E${transportStart}:E${transportEnd})` }]);
+    styleRow(transportTotalRow, colors.total, true);
+    sheet.addRow([]);
+
+    addSection('Проживання');
+    addHeader(['Опис', 'Ночей', 'грн/ніч', 'Людей', 'Сума, грн']);
+    const accommodationStart = sheet.lastRow.number + 1;
+    data.accommodation.forEach((item) => {
+      const rowNumber = sheet.lastRow.number + 1;
+      const nights = item.nights === 'auto' ? { formula: 'MAX(0,B5-1)' } : toNumber(item.nights, 0);
+      const people = item.people === 'auto' ? { formula: 'B6' } : toNumber(item.people, 0);
+      const row = sheet.addRow([
+        item.name || '',
+        nights,
+        toNumber(item.costPerNightUah, 0),
+        people,
+        { formula: `B${rowNumber}*C${rowNumber}*D${rowNumber}` }
+      ]);
+      styleRow(row, colors.white);
+      row.getCell(2).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: colors.formula } };
+      row.getCell(3).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: colors.input } };
+      row.getCell(4).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: colors.formula } };
+      row.getCell(5).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: colors.formula } };
+    });
+    const accommodationEnd = sheet.lastRow.number;
+    const accommodationTotalRow = sheet.addRow(['Всього проживання', '', '', '', { formula: `SUM(E${accommodationStart}:E${accommodationEnd})` }]);
+    styleRow(accommodationTotalRow, colors.total, true);
+    sheet.addRow([]);
+
+    addSection('Харчування');
+    addHeader(['Опис', 'Днів', 'грн/день', 'Людей', 'Сума, грн']);
+    const foodStart = sheet.lastRow.number + 1;
+    data.food.forEach((item) => {
+      const rowNumber = sheet.lastRow.number + 1;
+      const days = item.days === 'auto' ? { formula: 'B5' } : toNumber(item.days, 0);
+      const people = item.people === 'auto' ? { formula: 'B6' } : toNumber(item.people, 0);
+      const row = sheet.addRow([
+        item.name || '',
+        days,
+        toNumber(item.costPerDayUah, 0),
+        people,
+        { formula: `B${rowNumber}*C${rowNumber}*D${rowNumber}` }
+      ]);
+      styleRow(row, colors.white);
+      row.getCell(2).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: colors.formula } };
+      row.getCell(3).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: colors.input } };
+      row.getCell(4).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: colors.formula } };
+      row.getCell(5).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: colors.formula } };
+    });
+    const foodEnd = sheet.lastRow.number;
+    const foodTotalRow = sheet.addRow(['Всього харчування', '', '', '', { formula: `SUM(E${foodStart}:E${foodEnd})` }]);
+    styleRow(foodTotalRow, colors.total, true);
+    sheet.addRow([]);
+
+    addSection('Інші витрати');
+    addHeader(['Опис', 'Сума, грн', '', 'К-сть', 'Разом, грн']);
+    const otherStart = sheet.lastRow.number + 1;
+    data.other.forEach((item) => {
+      const rowNumber = sheet.lastRow.number + 1;
+      const row = sheet.addRow([
+        item.name || '',
+        toNumber(item.amountUah, 0),
+        '',
+        toNumber(item.quantity, 0),
+        { formula: `B${rowNumber}*D${rowNumber}` }
+      ]);
+      styleRow(row, colors.white);
+      row.getCell(2).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: colors.input } };
+      row.getCell(4).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: colors.input } };
+      row.getCell(5).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: colors.formula } };
+    });
+    const otherEnd = sheet.lastRow.number;
+    const otherTotalRow = sheet.addRow(['Всього інше', '', '', '', { formula: `SUM(E${otherStart}:E${otherEnd})` }]);
+    styleRow(otherTotalRow, colors.total, true);
+    sheet.addRow([]);
+
+    addSection('Підсумок');
+    const summaryRows = [
+      ['Монтажні роботи', { formula: `'Монтажні роботи'!F${finalWorkRow.number}` }],
+      ['Транспорт', { formula: `E${transportTotalRow.number}` }],
+      ['Проживання', { formula: `E${accommodationTotalRow.number}` }],
+      ['Харчування', { formula: `E${foodTotalRow.number}` }],
+      ['Інші витрати', { formula: `E${otherTotalRow.number}` }]
+    ];
+    summaryRows.forEach(([label, value]) => {
+      const row = sheet.addRow([label, '', '', '', value]);
+      styleRow(row, colors.formula, true);
+    });
+    const finalRow = sheet.addRow(['ВСЬОГО ДО ВИПЛАТИ', '', '', '', { formula: `SUM(E${sheet.lastRow.number - 4}:E${sheet.lastRow.number})`, result: toNumber(calculations?.sums?.installerCostsUah, 0) }]);
+    styleRow(finalRow, colors.final, true);
+    finalRow.eachCell((cell) => {
+      cell.font = { bold: true, size: 12, color: { argb: 'FFFFFFFF' } };
+    });
+    const usdRow = sheet.addRow(['Еквівалент USD', '', '', '', { formula: `IF(B7>0,E${finalRow.number}/B7,0)`, result: toNumber(calculations?.sums?.installerCostsUsd, 0) }]);
+    styleRow(usdRow, colors.formula, true);
+
+    sheet.views = [{ state: 'frozen', ySplit: 1 }];
+    sheet.eachRow((row) => {
+      row.height = row.height || 22;
+    });
+
+    const outBuffer = await workbook.xlsx.writeBuffer();
+    const outBlob = new Blob([outBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const outBaseDocName = buildDocumentBaseName(clientInfo, calculations?.stationPowerW || 0);
+    const outFileName = `${outBaseDocName}_Розрахунок_робіт.xlsx`;
+
+    await saveToDiskUtility(
+      workspaceHandle,
+      clientInfo,
+      calculations,
+      outFileName,
+      outBlob,
+      'Розрахунок робіт',
+      projectFolderName
+    );
+  } catch (err) {
+    console.error('Installer costs Excel Export Error:', err);
+    alert(`Помилка при створенні Excel розрахунку робіт: ${err.message}`);
+  }
+}
+
+window.exportInstallerCostsExcelFile = exportInstallerCostsExcelFile;

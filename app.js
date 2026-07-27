@@ -324,6 +324,288 @@ const toNumber = (value, fallback = 0) => {
 };
 const parseNumberInput = (value) => (value === "" ? "" : toNumber(value, 0));
 const roundMarkupForInput = (value) => (value === "" ? "" : Math.round(toNumber(value, 0) * 10) / 10);
+const INSTALLER_WORK_SECTIONS = [
+  {
+    title: "1.1 Монтаж панелей на похилому даху",
+    items: [
+      ["Монтаж конструкцій в площині покрівлі", "модуль", 220],
+      ["Монтаж панелей в площині покрівлі", "модуль", 230]
+    ]
+  },
+  {
+    title: "1.2 Похилий дах з регулюванням куту нахилу",
+    items: [
+      ["Монтаж конструкцій з кутиковим кріпленням", "модуль", 260],
+      ["Монтаж панелей на кутикову конструкцію", "модуль", 230]
+    ]
+  },
+  {
+    title: "1.3 Плоский дах - похила конструкція",
+    items: [
+      ["Монтаж конструкцій на плоскій покрівлі", "модуль", 320],
+      ["Монтаж панелей на конструкції на плоскій покрівлі", "модуль", 250]
+    ]
+  },
+  {
+    title: "1.4 Плоский дах - баластна система",
+    items: [
+      ["Розстановка бетонних баластів", "шт", 50],
+      ["Монтаж конструкцій на баластах", "модуль", 320],
+      ["Монтаж панелей на баластній системі", "модуль", 250]
+    ]
+  },
+  {
+    title: "1.5 Наземна станція",
+    items: [
+      ["Буріння отворів в землі, ручний бур", "шт", 200],
+      ["Монтаж наземних металоконструкцій", "модуль", 320],
+      ["Монтаж панелей на наземні металоконструкції", "модуль", 250],
+      ["Приготування бетонного розчину", "м.куб.", 1200]
+    ]
+  },
+  {
+    title: "1.6 Наземна станція на геошурупах",
+    items: [
+      ["Закручування геошурупа", "шт", 200],
+      ["Монтаж наземних металоконструкцій", "модуль", 220],
+      ["Монтаж панелей на наземні металоконструкції", "модуль", 250]
+    ]
+  },
+  {
+    title: "2.1 DC кабельні лінії",
+    items: [
+      ["Монтаж сонячного кабелю", "м/пог", 25],
+      ["Додаткове свердління отворів", "шт", 175],
+      ["Монтаж щита PV - 1 стрінг", "шт", 250]
+    ]
+  },
+  {
+    title: "2.2 DCCB / захист DC",
+    items: [
+      ["Монтаж та підключення DCCB 1-стрінговий", "шт", 500],
+      ["Монтаж та підключення DCCB 2-стрінговий", "шт", 800],
+      ["Монтаж та підключення DCCB 4-стрінговий", "шт", 1200]
+    ]
+  },
+  {
+    title: "2.3 AC кабельні лінії та щити",
+    items: [
+      ["Монтаж силового кабелю по повітряній лінії до 40 мм", "м/пог", 150],
+      ["Монтаж силового кабелю по повітряній лінії до 80 мм", "м/пог", 200],
+      ["Монтаж силового кабелю по повітряній лінії до 120 мм", "м/пог", 250],
+      ["Монтаж силового кабелю по траншеях до 40 мм", "м/пог", 50],
+      ["Монтаж силового кабелю по траншеях до 80 мм", "м/пог", 70],
+      ["Монтаж силового кабелю по траншеях до 120 мм", "м/пог", 90],
+      ["Копка траншеї ручна 0,5 м", "м/пог", 600],
+      ["Монтаж силового кабелю по поверхнях до 40 мм", "м/пог", 80],
+      ["Монтаж силового кабелю по поверхнях до 80 мм", "м/пог", 110],
+      ["Монтаж силового кабелю по поверхнях до 120 мм", "м/пог", 150],
+      ["Додаткове свердління отворів", "шт", 175],
+      ["Протяжка кабеля в гофру", "м/пог", 25],
+      ["Прокладка кабеля по лотку, коробу", "м/пог", 15],
+      ["Монтаж лотків до 100 мм", "м/пог", 50],
+      ["Монтаж лотків до 200 мм", "м/пог", 75],
+      ["Монтаж лотків до 300 мм", "м/пог", 100],
+      ["Монтаж щита AC, 6-15 кВт готові", "шт", 750],
+      ["Монтаж щита AC, 15-30 кВт готові", "шт", 1000],
+      ["Монтаж щита AC, 30-50 кВт готові", "шт", 1500],
+      ["Монтаж щита AC, 50-100 кВт готові", "шт", 2000]
+    ]
+  },
+  {
+    title: "2.4 Монтаж та обв'язка інверторів",
+    items: [
+      ["Гібридний інвертор 1ф 6-10 кВт", "шт", 1800],
+      ["Гібридний інвертор 1ф 12-16 кВт", "шт", 2400],
+      ["Гібридний інвертор 3ф 10-18 кВт", "шт", 2800],
+      ["Гібридний інвертор 3ф 20-30 кВт", "шт", 3500],
+      ["Гібридний інвертор 3ф 30-50 кВт", "шт", 4200],
+      ["Гібридний інвертор 3ф 50-80 кВт", "шт", 4800],
+      ["Мережевий інвертор 25-30 кВт", "шт", 2000],
+      ["Мережевий інвертор 30-50 кВт", "шт", 3000],
+      ["Конструкція під мережеві інвертори та драбини", "компл.", 5000]
+    ]
+  },
+  {
+    title: "2.5 Слаботочні лінії та моніторинг",
+    items: [
+      ["Монтаж витої пари", "м/пог", 10],
+      ["Монтаж автономного інтернет-обладнання", "компл.", 1250],
+      ["Система керування станцією Victron CERBO", "шт", 450],
+      ["Обв'язка MPPT контролера", "шт", 850]
+    ]
+  },
+  {
+    title: "3. Акумуляторні системи",
+    items: [
+      ["Система керування BMS плата", "шт", 950],
+      ["Обв'язка акумуляторів і монтаж 5-7 кВт", "шт", 1250],
+      ["Обв'язка акумуляторів і монтаж 12-16 кВт", "шт", 2850],
+      ["Збірка та монтаж конструкції під акумулятори 13 позицій", "шт", 3500],
+      ["Монтаж кліматичної шафи для акумуляторів", "шт", 2500]
+    ]
+  },
+  {
+    title: "4. Система заземлення",
+    items: [
+      ["Контур заземлення - 3 штиря по 1,5 м", "компл.", 4300],
+      ["Контур заземлення - 9 штирів по 1,5 м", "компл.", 6400]
+    ]
+  },
+  {
+    title: "5. Пусконалагодження та додаткові роботи",
+    items: [
+      ["Пусконалагодження гібридної СЕС", "шт", 4400],
+      ["Підключення і запуск генератора з АВР", "послуга", 12720],
+      ["Монтаж огородження ФЕС", "секція", 800],
+      ["Вартість проїзду на віддалені об'єкти", "грн/км", 15],
+      ["Вартість проживання на 1 людину на добу", "грн/доба", 750],
+      ["Добові", "грн/доба", 400]
+    ]
+  },
+  {
+    title: "6. Спецтехніка",
+    items: [
+      ["Автокран", "год", 0],
+      ["Маніпулятор", "год", 0],
+      ["Вантажівка", "год", 0]
+    ]
+  },
+  {
+    title: "7. Додаткові роботи",
+    items: [
+      ["Додаткова робота", "послуга", 0]
+    ]
+  }
+];
+const createInstallerWorkSections = (sourceSections) => {
+  const source = Array.isArray(sourceSections) && sourceSections.length ? sourceSections : INSTALLER_WORK_SECTIONS;
+  return source.map((section, sIdx) => ({
+    id: section.id || `installer_section_${sIdx}`,
+    title: section.title || `Розділ ${sIdx + 1}`,
+    collapsed: section.collapsed ?? true,
+    items: (() => {
+      const normalizedRows = (Array.isArray(section.items) ? section.items : []).map((item, idx) => {
+        const row = Array.isArray(item)
+          ? { name: item[0], unit: item[1], priceUah: item[2] }
+          : item;
+        return {
+          id: row.id || `installer_work_${sIdx}_${idx}`,
+          name: row.name || "",
+          unit: row.unit || "",
+          priceUah: toNumber(row.priceUah, 0),
+          quantity: toNumber(row.quantity, 0)
+        };
+      });
+      const blankRows = normalizedRows.filter(row => (
+        String(row.name || '').trim() === '' && toNumber(row.priceUah, 0) === 0 && toNumber(row.quantity, 0) === 0
+      )).length;
+      for (let i = blankRows; i < 2; i += 1) {
+        normalizedRows.push({
+          id: `installer_custom_${sIdx}_${Date.now()}_${i}_${Math.random().toString(36).slice(2, 8)}`,
+          name: "",
+          unit: "",
+          priceUah: 0,
+          quantity: 0
+        });
+      }
+      return normalizedRows;
+    })()
+  }));
+};
+const createInstallerCostRows = (rows) => (Array.isArray(rows) ? rows : []).map((row, idx) => ({
+  id: row?.id || `installer_row_${Date.now()}_${idx}_${Math.random().toString(36).slice(2, 8)}`,
+  ...row,
+  name: row?.name || ""
+}));
+const DEFAULT_INSTALLER_COSTS = {
+  title: "",
+  days: 1,
+  employees: 1,
+  panelCount: "",
+  panelPower: "",
+  workSections: createInstallerWorkSections(),
+  transport: [
+    { id: "transport_to", name: "Дорога туди", distanceKm: 0, pricePerKmUah: 0, trips: 1 },
+    { id: "transport_back", name: "Дорога назад", distanceKm: 0, pricePerKmUah: 0, trips: 1 },
+    { id: "transport_local", name: "Переїзди на об'єкті", distanceKm: 0, pricePerKmUah: 0, trips: 1 }
+  ],
+  accommodation: [
+    { id: "accommodation_main", name: "Готель / оренда квартири", nights: "auto", costPerNightUah: 0, people: "auto" }
+  ],
+  food: [
+    { id: "food_main", name: "Харчування", days: "auto", costPerDayUah: 0, people: "auto" },
+    { id: "food_extra", name: "Кава / снеки / інше", days: "auto", costPerDayUah: 0, people: "auto" }
+  ],
+  other: [
+    { id: "other_per_diem", name: "Добові", amountUah: 0, quantity: 1 },
+    { id: "other_mobile", name: "Мобільний зв'язок / інтернет", amountUah: 0, quantity: 1 },
+    { id: "other_representative", name: "Представницькі витрати", amountUah: 0, quantity: 1 },
+    { id: "other_misc", name: "Інше", amountUah: 0, quantity: 1 }
+  ]
+};
+const normalizeInstallerCosts = (source = {}) => {
+  const data = source && typeof source === 'object' ? source : {};
+  return {
+    ...DEFAULT_INSTALLER_COSTS,
+    ...data,
+    title: typeof data.title === 'string' ? data.title : DEFAULT_INSTALLER_COSTS.title,
+    days: Math.max(0, toNumber(data.days, DEFAULT_INSTALLER_COSTS.days)),
+    employees: Math.max(0, toNumber(data.employees, DEFAULT_INSTALLER_COSTS.employees)),
+    panelCount: data.panelCount ?? DEFAULT_INSTALLER_COSTS.panelCount,
+    panelPower: data.panelPower ?? DEFAULT_INSTALLER_COSTS.panelPower,
+    workSections: createInstallerWorkSections(data.workSections),
+    transport: createInstallerCostRows(data.transport || DEFAULT_INSTALLER_COSTS.transport),
+    accommodation: createInstallerCostRows(data.accommodation || DEFAULT_INSTALLER_COSTS.accommodation),
+    food: createInstallerCostRows(data.food || DEFAULT_INSTALLER_COSTS.food),
+    other: createInstallerCostRows(data.other || DEFAULT_INSTALLER_COSTS.other)
+  };
+};
+const calculateInstallerCostTotals = (source = {}, usdRate = 1) => {
+  const costs = normalizeInstallerCosts(source);
+  const safeUsdRate = Math.max(0.000001, toNumber(usdRate, 1));
+  const days = Math.max(0, toNumber(costs.days, 0));
+  const employees = Math.max(0, toNumber(costs.employees, 0));
+  const autoNights = Math.max(0, days - 1);
+  const worksUah = costs.workSections.reduce((sectionAcc, section) => (
+    sectionAcc + (section.items || []).reduce((acc, row) => (
+      acc + (Math.max(0, toNumber(row.priceUah, 0)) * Math.max(0, toNumber(row.quantity, 0)))
+    ), 0)
+  ), 0);
+
+  const transportUah = costs.transport.reduce((acc, row) => (
+    acc + (Math.max(0, toNumber(row.distanceKm, 0)) * Math.max(0, toNumber(row.pricePerKmUah, 0)) * Math.max(0, toNumber(row.trips, 0)))
+  ), 0);
+  const accommodationUah = costs.accommodation.reduce((acc, row) => {
+    const nights = row.nights === "auto" ? autoNights : Math.max(0, toNumber(row.nights, 0));
+    const people = row.people === "auto" ? employees : Math.max(0, toNumber(row.people, 0));
+    return acc + (nights * Math.max(0, toNumber(row.costPerNightUah, 0)) * people);
+  }, 0);
+  const foodUah = costs.food.reduce((acc, row) => {
+    const rowDays = row.days === "auto" ? days : Math.max(0, toNumber(row.days, 0));
+    const people = row.people === "auto" ? employees : Math.max(0, toNumber(row.people, 0));
+    return acc + (rowDays * Math.max(0, toNumber(row.costPerDayUah, 0)) * people);
+  }, 0);
+  const otherUah = costs.other.reduce((acc, row) => (
+    acc + (Math.max(0, toNumber(row.amountUah, 0)) * Math.max(0, toNumber(row.quantity, 0)))
+  ), 0);
+  const tripUah = transportUah + accommodationUah + foodUah + otherUah;
+  const totalUah = worksUah + tripUah;
+
+  return {
+    worksUah,
+    tripUah,
+    transportUah,
+    accommodationUah,
+    foodUah,
+    otherUah,
+    totalUah,
+    totalUsd: totalUah / safeUsdRate,
+    autoNights,
+    days,
+    employees
+  };
+};
 const parseFirstNumber = (value, fallback = 0) => {
   const source = String(value ?? '').replace(/\s/g, '').replace(',', '.');
   const match = source.match(/-?\d+(?:\.\d+)?/);
@@ -597,6 +879,11 @@ function App() {
   
   const [otherExpenses, setOtherExpenses] = useState(() => getSaved('solar_otherExpenses', cloneList(DEFAULT_OTHER_EXPENSES)));
   const [workItems, setWorkItems] = useState(() => getSaved('solar_workItems', cloneList(DEFAULT_WORK_ITEMS)));
+  const [installerCosts, setInstallerCosts] = useState(() => normalizeInstallerCosts(getSaved('solar_installerCosts', DEFAULT_INSTALLER_COSTS)));
+  const [installerCostsCollapsed, setInstallerCostsCollapsed] = useState(() => getSaved('solar_installerCostsCollapsed', false));
+  const [installerModalTopCollapsed, setInstallerModalTopCollapsed] = useState(() => getSaved('solar_installerModalTopCollapsed', false));
+  const [showInstallerCostsModal, setShowInstallerCostsModal] = useState(false);
+  const [installerCalculatorTab, setInstallerCalculatorTab] = useState('works');
   const [installPercent, setInstallPercent] = useState(() => getSaved('solar_installPercent', 15));
   const [managerCommissionRate, setManagerCommissionRate] = useState(() => getSaved('solar_managerCommissionRate', 10));
   const [clientDiscountMode, setClientDiscountMode] = useState(() => getSaved('solar_clientDiscountMode', 'percent'));
@@ -1299,6 +1586,7 @@ function App() {
     equipmentGroups,
     otherExpenses,
     workItems,
+    installerCosts,
     installPercent,
     managerCommissionRate,
     clientDiscountMode,
@@ -1395,6 +1683,7 @@ function App() {
     setEquipmentGroups(orderEquipmentGroups(data.equipmentGroups && typeof data.equipmentGroups === 'object' ? data.equipmentGroups : createDefaultGroups()));
     setOtherExpenses(Array.isArray(data.otherExpenses) ? cloneList(data.otherExpenses) : cloneList(DEFAULT_OTHER_EXPENSES));
     setWorkItems(Array.isArray(data.workItems) ? cloneList(data.workItems) : cloneList(DEFAULT_WORK_ITEMS));
+    setInstallerCosts(normalizeInstallerCosts(data.installerCosts));
     setInstallPercent(data.installPercent ?? 15);
     setManagerCommissionRate(data.managerCommissionRate ?? 10);
     setClientDiscountMode(DISCOUNT_MODES[data.clientDiscountMode] ? data.clientDiscountMode : 'percent');
@@ -1434,6 +1723,7 @@ function App() {
     setEquipmentGroups(orderEquipmentGroups(data.equipmentGroups && typeof data.equipmentGroups === 'object' ? data.equipmentGroups : createDefaultGroups()));
     setWorkItems(Array.isArray(data.workItems) ? cloneList(data.workItems) : cloneList(DEFAULT_WORK_ITEMS));
     setOtherExpenses(Array.isArray(data.otherExpenses) ? cloneList(data.otherExpenses) : cloneList(DEFAULT_OTHER_EXPENSES));
+    setInstallerCosts(normalizeInstallerCosts(data.installerCosts));
     setOfferPurpose(typeof data.offerPurpose === 'string' ? data.offerPurpose : DEFAULT_OFFER_PURPOSE);
     setCoverSystemName(typeof data.coverSystemName === 'string' ? data.coverSystemName : DEFAULT_COVER_SYSTEM_NAME);
     setCoverPageType(typeof data.coverPageType === 'string' ? data.coverPageType : COVER_PAGE_TYPES[0]);
@@ -1503,6 +1793,7 @@ function App() {
     setEquipmentGroups(orderEquipmentGroups(data.equipmentGroups && typeof data.equipmentGroups === 'object' ? data.equipmentGroups : createDefaultGroups()));
     setWorkItems(Array.isArray(data.workItems) ? cloneList(data.workItems) : cloneList(DEFAULT_WORK_ITEMS));
     setOtherExpenses(Array.isArray(data.otherExpenses) ? cloneList(data.otherExpenses) : cloneList(DEFAULT_OTHER_EXPENSES));
+    setInstallerCosts(normalizeInstallerCosts(data.installerCosts));
     setOfferPurpose(typeof data.offerPurpose === 'string' ? data.offerPurpose : DEFAULT_OFFER_PURPOSE);
     setCoverSystemName(typeof data.coverSystemName === 'string' ? data.coverSystemName : DEFAULT_COVER_SYSTEM_NAME);
     setCoverPageType(typeof data.coverPageType === 'string' ? data.coverPageType : COVER_PAGE_TYPES[0]);
@@ -1595,6 +1886,7 @@ function App() {
         equipmentGroups,
         otherExpenses,
         workItems,
+        installerCosts,
         installPercent,
         managerCommissionRate,
         clientDiscountMode,
@@ -1686,6 +1978,7 @@ function App() {
         selectedManagerId,
         workItems,
         otherExpenses,
+        installerCosts,
         installPercent,
         clientDiscountMode,
         clientDiscountPercent,
@@ -1743,6 +2036,7 @@ function App() {
         selectedManagerId,
         workItems,
         otherExpenses,
+        installerCosts,
         installPercent,
         clientDiscountMode,
         clientDiscountPercent,
@@ -1808,6 +2102,7 @@ function App() {
       setOtherExpenses(cloneList(DEFAULT_OTHER_EXPENSES));
       setInstallPercent(15);
     }
+    setInstallerCosts(normalizeInstallerCosts(DEFAULT_INSTALLER_COSTS));
     setManagerCommissionRate(10);
     setClientDiscountPercent(0);
     setTaxMode('none');
@@ -2046,6 +2341,25 @@ function App() {
           workspaceHandle,
           projectFolderName: (currentProjectFolderName || projectName || '').trim(),
           detailLevel
+        });
+        return;
+      }
+      if (mode === 'installer_costs') {
+        persistCurrentSheetState();
+        await exportInstallerCostsExcelFile({
+          clientInfo,
+          calculations,
+          installerCosts: {
+            ...installerCostState,
+            panelCount: installerPanelCount,
+            panelPower: installerPanelPower
+          },
+          rates: {
+            eur: toNumber(rates.eur, 0),
+            usd: toNumber(rates.usd, 0)
+          },
+          workspaceHandle,
+          projectFolderName: (currentProjectFolderName || projectName || '').trim()
         });
         return;
       }
@@ -2513,6 +2827,154 @@ function App() {
     setList(prev => prev.filter(item => item.id !== id));
   };
 
+  const updateInstallerCostsField = (field, value) => {
+    setInstallerCosts(prev => normalizeInstallerCosts({ ...prev, [field]: value }));
+  };
+
+  const updateInstallerCostRow = (section, id, field, value) => {
+    setInstallerCosts(prev => {
+      const normalized = normalizeInstallerCosts(prev);
+      const nextValue = field === 'name'
+        ? value
+        : ((field === 'nights' || field === 'people' || field === 'days') && value === 'auto')
+          ? 'auto'
+          : parseNumberInput(value);
+      return {
+        ...normalized,
+        [section]: (normalized[section] || []).map(row => (
+          row.id === id ? { ...row, [field]: nextValue } : row
+        ))
+      };
+    });
+  };
+
+  const updateInstallerWorkRow = (sectionId, rowId, field, value) => {
+    setInstallerCosts(prev => {
+      const normalized = normalizeInstallerCosts(prev);
+      const nextValue = field === 'name' || field === 'unit' ? value : parseNumberInput(value);
+      return {
+        ...normalized,
+        workSections: normalized.workSections.map(section => (
+          section.id !== sectionId
+            ? section
+            : {
+              ...section,
+              items: section.items.map(row => (
+                row.id === rowId ? { ...row, [field]: nextValue } : row
+              ))
+            }
+        ))
+      };
+    });
+  };
+
+  const toggleInstallerWorkSection = (sectionId) => {
+    setInstallerCosts(prev => {
+      const normalized = normalizeInstallerCosts(prev);
+      return {
+        ...normalized,
+        workSections: normalized.workSections.map(section => (
+          section.id === sectionId
+            ? { ...section, collapsed: !section.collapsed }
+            : section
+        ))
+      };
+    });
+  };
+
+  const addInstallerWorkRow = (sectionId) => {
+    setInstallerCosts(prev => {
+      const normalized = normalizeInstallerCosts(prev);
+      return {
+        ...normalized,
+        workSections: normalized.workSections.map(section => (
+          section.id !== sectionId
+            ? section
+            : {
+              ...section,
+              items: [
+                ...section.items,
+                {
+                  id: `installer_custom_${sectionId}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+                  name: "",
+                  unit: "",
+                  priceUah: 0,
+                  quantity: 0
+                }
+              ]
+            }
+        ))
+      };
+    });
+  };
+
+  const refreshInstallerWorkPricesFromCatalog = () => {
+    setInstallerCosts(prev => {
+      const normalized = normalizeInstallerCosts(prev);
+      const freshSections = createInstallerWorkSections(INSTALLER_WORK_SECTIONS);
+      return {
+        ...normalized,
+        workSections: freshSections.map((section, sIdx) => {
+          const currentSection = normalized.workSections[sIdx] || {};
+          const currentItems = Array.isArray(currentSection.items) ? currentSection.items : [];
+          const refreshedItems = section.items.map((row, idx) => ({
+            ...row,
+            quantity: toNumber(currentItems[idx]?.quantity, row.quantity || 0)
+          }));
+          const customItems = currentItems.slice(section.items.length).filter(row => (
+            String(row?.name || '').trim() ||
+            toNumber(row?.priceUah, 0) > 0 ||
+            toNumber(row?.quantity, 0) > 0
+          ));
+          return {
+            ...section,
+            items: [...refreshedItems, ...customItems]
+          };
+        })
+      };
+    });
+  };
+
+  const openInstallerCostsModal = () => {
+    setInstallerCosts(prev => {
+      const normalized = normalizeInstallerCosts(prev);
+      return {
+        ...normalized,
+        workSections: normalized.workSections.map(section => ({ ...section, collapsed: true }))
+      };
+    });
+    setShowInstallerCostsModal(true);
+  };
+
+  const addInstallerCostRow = (section) => {
+    const defaults = {
+      transport: { name: "Новий транспорт", distanceKm: 0, pricePerKmUah: 0, trips: 1 },
+      accommodation: { name: "Проживання", nights: "auto", costPerNightUah: 0, people: "auto" },
+      food: { name: "Харчування", days: "auto", costPerDayUah: 0, people: "auto" },
+      other: { name: "Інша витрата", amountUah: 0, quantity: 1 }
+    };
+    setInstallerCosts(prev => {
+      const normalized = normalizeInstallerCosts(prev);
+      return {
+        ...normalized,
+        [section]: [
+          ...(normalized[section] || []),
+          { id: `${section}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`, ...(defaults[section] || defaults.other) }
+        ]
+      };
+    });
+  };
+
+  const removeInstallerCostRow = (section, id) => {
+    setInstallerCosts(prev => {
+      const normalized = normalizeInstallerCosts(prev);
+      return {
+        ...normalized,
+        [section]: (normalized[section] || []).filter(row => row.id !== id)
+      };
+    });
+  };
+
   const updateGroupSetting = (groupKey, field, value) => {
     const normalized = (field === 'name' || field === 'unit' || field === 'currency' || field === 'mode')
       ? value
@@ -2745,6 +3207,9 @@ function App() {
   useEffect(() => { localStorage.setItem('solar_equipmentGroups', JSON.stringify(equipmentGroups)); }, [equipmentGroups]);
   useEffect(() => { localStorage.setItem('solar_otherExpenses', JSON.stringify(otherExpenses)); }, [otherExpenses]);
   useEffect(() => { localStorage.setItem('solar_workItems', JSON.stringify(workItems)); }, [workItems]);
+  useEffect(() => { localStorage.setItem('solar_installerCosts', JSON.stringify(installerCosts)); }, [installerCosts]);
+  useEffect(() => { localStorage.setItem('solar_installerCostsCollapsed', JSON.stringify(installerCostsCollapsed)); }, [installerCostsCollapsed]);
+  useEffect(() => { localStorage.setItem('solar_installerModalTopCollapsed', JSON.stringify(installerModalTopCollapsed)); }, [installerModalTopCollapsed]);
   useEffect(() => { localStorage.setItem('solar_installPercent', JSON.stringify(installPercent)); }, [installPercent]);
   useEffect(() => { localStorage.setItem('solar_managerCommissionRate', JSON.stringify(managerCommissionRate)); }, [managerCommissionRate]);
   useEffect(() => { localStorage.setItem('solar_clientDiscountMode', JSON.stringify(clientDiscountMode)); }, [clientDiscountMode]);
@@ -2927,9 +3392,12 @@ function App() {
 
     const processedWorkItems = processList(workItems);
     const processedOtherExpenses = processList(otherExpenses);
+    const installerCostTotals = calculateInstallerCostTotals(installerCosts, safeUsdRate);
 
     const workItemsSumUsd = processedWorkItems.reduce((acc, it) => acc + it.sumUsd, 0);
-    const workItemsCostUsd = processedWorkItems.reduce((acc, it) => acc + toNumber(it.costUsd, 0), 0);
+    const workItemsBaseCostUsd = processedWorkItems.reduce((acc, it) => acc + toNumber(it.costUsd, 0), 0);
+    const installerCostsUsd = toNumber(installerCostTotals.totalUsd, 0);
+    const workItemsCostUsd = workItemsBaseCostUsd + installerCostsUsd;
     const workItemsMarginUsd = workItemsSumUsd - workItemsCostUsd;
     const workItemsSumUah = processedWorkItems.reduce((acc, it) => acc + it.sumUah, 0);
     const otherCostsUsd = processedOtherExpenses.reduce((acc, it) => acc + it.sumUsd, 0);
@@ -2969,7 +3437,9 @@ function App() {
     const orderCostUsd = totals.costUsd + workItemsCostUsd + otherCostsCostUsd;
     const marginMaterialsPercent = totals.sumUsd > 0 ? (marginMaterialsUsd / totals.sumUsd) * 100 : 0;
     const marginWorksPercent = workItemsSumUsd > 0 ? (marginWorksUsd / workItemsSumUsd) * 100 : 0;
-    const marginFromOrderPercent = finalTotalWithDiscountUsd > 0 ? (marginTotalUsd / finalTotalWithDiscountUsd) * 100 : 0;
+    const discountHitsGrossMarginUsd = discountScope === 'full' ? discountUsd : 0;
+    const marginTotalWithDiscountUsd = marginTotalUsd - discountHitsGrossMarginUsd;
+    const marginFromOrderPercent = finalTotalWithDiscountUsd > 0 ? (marginTotalWithDiscountUsd / finalTotalWithDiscountUsd) * 100 : 0;
     const materialsWithDiscountUsd =
       discountScope === 'goods'
         ? Math.max(0, totals.sumUsd - discountUsd)
@@ -2982,7 +3452,7 @@ function App() {
     const goodsDiscountUsd = Math.max(0, totals.sumUsd - materialsWithDiscountUsd);
     const worksDiscountUsd = Math.max(0, installationTotalUsd - worksWithDiscountUsd);
     // Маржа для виплат менеджеру/чистого прибутку — вже з урахуванням клієнтської знижки
-    const grossMarginBeforeTaxesUsd = marginTotalUsd - (goodsDiscountUsd + worksDiscountUsd);
+    const grossMarginBeforeTaxesUsd = marginTotalUsd - discountHitsGrossMarginUsd - goodsDiscountUsd - worksDiscountUsd;
     // Комісія менеджера (до податків) — від маржі замовлення після знижки
     const managerCommissionBeforeTaxesUsd = Math.max(0, grossMarginBeforeTaxesUsd) * (toNumber(managerCommissionRate, 0) / 100);
     const netMarginBeforeTaxesUsd = grossMarginBeforeTaxesUsd - managerCommissionBeforeTaxesUsd;
@@ -3037,7 +3507,7 @@ function App() {
       return acc + Math.max(0, toNumber(settings?.taxDistributedUsd, 0));
     }, 0);
     const distributedTaxUsdTotal = distributedTaxUsdFromRows + distributedTaxUsdFromFixedGroups;
-    if (taxDistributionApplied && lockedDistributedTaxUsd !== null && lockedDistributedTaxUsd !== undefined && toNumber(lockedDistributedTaxUsd, 0) > 0) {
+    if (taxMode !== 'none' && taxDistributionApplied && lockedDistributedTaxUsd !== null && lockedDistributedTaxUsd !== undefined && toNumber(lockedDistributedTaxUsd, 0) > 0) {
       taxesUsd = toNumber(lockedDistributedTaxUsd, 0);
     }
     const marginAfterTaxesUsd = grossMarginBeforeTaxesUsd - taxesUsd;
@@ -3060,7 +3530,9 @@ function App() {
       workItemsSumUsd,
       workItemsSumUah,
       workItemsCostUsd,
+      workItemsBaseCostUsd,
       workItemsMarginUsd,
+      installerCostTotals,
       otherCostsUsd,
       otherCostsUah,
       otherCostsCostUsd,
@@ -3077,11 +3549,16 @@ function App() {
         installationTotalUsd,
         installationTotalUah,
         workItemsCostUsd,
+        workItemsBaseCostUsd,
+        installerCostsUsd,
+        installerCostsUah: toNumber(installerCostTotals.totalUah, 0),
+        installerCostTotals,
         marginMaterialsUsd,
         marginMaterialsPercent,
         marginWorksUsd,
         marginWorksPercent,
-        marginTotalUsd,
+        marginTotalBeforeDiscountUsd: marginTotalUsd,
+        marginTotalUsd: marginTotalWithDiscountUsd,
         marginFromOrderPercent,
         taxesUsd,
         taxesUah,
@@ -3123,6 +3600,7 @@ function App() {
     modulePower,
     installPercent,
     workItems,
+    installerCosts,
     otherExpenses,
     managerCommissionRate,
     clientDiscountMode,
@@ -3165,6 +3643,7 @@ function App() {
     equipmentGroups,
     otherExpenses,
     workItems,
+    installerCosts,
     installPercent,
     managerCommissionRate,
     clientDiscountMode,
@@ -3560,6 +4039,20 @@ function App() {
     : "";
   const orderBaseUsdForPercents = Math.max(0.000001, toNumber(calculations?.sums?.finalTotalWithDiscountUsd, 0));
   const pctOfOrder = (value) => ((toNumber(value, 0) / orderBaseUsdForPercents) * 100).toFixed(1);
+  const installerCostState = normalizeInstallerCosts(installerCosts);
+  const installerPanelCountFallback = Math.max(0, Math.round(toNumber(totalPanelQuantity, 0)));
+  const installerPanelPowerFallback = Math.max(0, toNumber(modulePower, 0));
+  const installerPanelCount = toNumber(installerCostState.panelCount, 0) > 0
+    ? toNumber(installerCostState.panelCount, 0)
+    : installerPanelCountFallback;
+  const installerPanelPower = toNumber(installerCostState.panelPower, 0) > 0
+    ? toNumber(installerCostState.panelPower, 0)
+    : installerPanelPowerFallback;
+  const installerPowerKw = (installerPanelCount * installerPanelPower) / 1000;
+  const installerWorksCostPerKwUah = installerPowerKw > 0
+    ? (toNumber(calculations.installerCostTotals?.worksUah, 0) / installerPowerKw)
+    : 0;
+  const installerWorksCostPerKwUsd = installerWorksCostPerKwUah / Math.max(0.000001, toNumber(rates.usd, 1));
   const isSidebarLayout = layoutMode === 'sidebar';
   const menuToggleSymbol = isSidebarLayout
     ? (menuCollapsed ? '▶' : '◀')
@@ -3816,6 +4309,13 @@ function App() {
   const resetTaxDistributionState = () => {
     setTaxDistributionApplied(false);
     setLockedDistributedTaxUsd(null);
+  };
+
+  const handleTaxModeChange = (nextTaxMode) => {
+    setTaxMode(nextTaxMode);
+    if (nextTaxMode === 'none') {
+      resetTaxDistributionState();
+    }
   };
 
   const applyVatRecalc = () => {
@@ -5342,6 +5842,13 @@ function App() {
               <div>
                 <div style={{fontSize: '2rem', fontWeight: 800, color: '#cbd5e1', lineHeight: 1}}>Додатковий % за монтаж</div>
                 <div style={{fontSize: '1.1rem', color: 'var(--text-muted)', marginTop: '0.25rem'}}>(від вартості обладнання)</div>
+                {!clientMode && (
+                  <div className="installer-payout-inline internal-only">
+                    <span>До виплати монтажникам:</span>
+                    <strong>₴{formatMoney(calculations.sums.installerCostsUah || 0)}</strong>
+                    <span>${formatMoney(calculations.sums.installerCostsUsd || 0)}</span>
+                  </div>
+                )}
               </div>
               <div className="flex items-center" style={{gap: '1rem'}}>
                 <input
@@ -5354,6 +5861,9 @@ function App() {
                   <div className="font-bold text-blue" style={{fontSize: '2.2rem', lineHeight: 1}}>${formatMoney(installPercentOnlyUsd)}</div>
                   <div style={{fontSize: '1.8rem', color: 'var(--text-muted)', marginTop: '0.2rem'}}>₴{formatMoney(installPercentOnlyUah)}</div>
                 </div>
+                {!clientMode && (
+                  <button type="button" className="secondary internal-only" onClick={openInstallerCostsModal}>Калькулятор робіт</button>
+                )}
               </div>
             </div>
           </div>
@@ -5495,6 +6005,15 @@ function App() {
                     <span>Собівартість робіт:</span>
                     <span className="font-bold">${formatMoney(calculations.sums.workItemsCostUsd || 0)}</span>
                   </div>
+                  {toNumber(calculations.sums.installerCostsUsd, 0) > 0 && (
+                    <div className="flex justify-between py-1 internal-only" style={{opacity: 0.8, fontSize: '0.9rem'}}>
+                      <span>Фактичні витрати монтажників:</span>
+                      <span className="font-bold">
+                        ₴{formatMoney(calculations.sums.installerCostsUah || 0)}
+                        <span style={{marginLeft: '0.4rem', opacity: 0.85}}>(${formatMoney(calculations.sums.installerCostsUsd || 0)})</span>
+                      </span>
+                    </div>
+                  )}
   
                   <div className="flex justify-between py-1 internal-only" style={{borderTop: '1px dashed rgba(148,163,184,0.2)', marginTop: '0.4rem', paddingTop: '0.4rem'}}>
                     <span style={{color: 'var(--accent-yellow)'}}>Маржа з робіт:</span>
@@ -5601,7 +6120,7 @@ function App() {
             </div>
             {!clientMode && <div className="input-group" style={{marginBottom: '1rem'}}>
               <label>Податковий режим</label>
-              <select value={taxMode} onChange={(e) => setTaxMode(e.target.value)}>
+              <select value={taxMode} onChange={(e) => handleTaxModeChange(e.target.value)}>
                 {Object.entries(TAX_MODES).map(([key, label]) => (
                   <option key={key} value={key}>{label}</option>
                 ))}
@@ -5853,6 +6372,277 @@ function App() {
       >
         🧮 Калькулятор
       </button>
+
+      {showInstallerCostsModal && !clientMode && (
+        <div className="project-modal-overlay no-print">
+          <div className="project-modal-card installer-modal-card">
+            <div className="installer-modal-header">
+              <div>
+                <h2 style={{margin: 0}}>Калькулятор робіт монтажників</h2>
+                <div style={{color: 'var(--text-muted)', marginTop: '0.25rem'}}>
+                  До виплати: <strong className="text-yellow">₴{formatMoney(calculations.sums.installerCostsUah || 0)}</strong>
+                  <span style={{marginLeft: '0.5rem'}}>(${formatMoney(calculations.sums.installerCostsUsd || 0)})</span>
+                </div>
+              </div>
+              <div className="flex items-center" style={{gap: '0.5rem', flexWrap: 'wrap'}}>
+                <button type="button" className="secondary" onClick={() => setInstallerModalTopCollapsed((value) => !value)}>
+                  {installerModalTopCollapsed ? 'Показати верх' : 'Згорнути верх'}
+                </button>
+                <button type="button" className="secondary" onClick={refreshInstallerWorkPricesFromCatalog}>Оновити ціни</button>
+                <button type="button" className="secondary" onClick={() => exportToExcel('installer_costs')}>Excel</button>
+                <button type="button" className="secondary" onClick={() => setShowInstallerCostsModal(false)}>Закрити</button>
+              </div>
+            </div>
+
+            {installerModalTopCollapsed ? (
+              <div className="installer-modal-compact-strip">
+                <span>{installerCostState.title || 'Без назви / міста'}</span>
+                <strong>Роботи: ₴{formatMoney(calculations.installerCostTotals?.worksUah || 0)}</strong>
+                <strong>Відрядження: ₴{formatMoney(calculations.installerCostTotals?.tripUah || 0)}</strong>
+                <strong>{formatKw(installerPowerKw)} кВт</strong>
+              </div>
+            ) : (
+              <>
+                <div className="installer-modal-summary">
+                  <div><span>Роботи</span><strong>₴{formatMoney(calculations.installerCostTotals?.worksUah || 0)}</strong></div>
+                  <div><span>Відрядження</span><strong>₴{formatMoney(calculations.installerCostTotals?.tripUah || 0)}</strong></div>
+                  <div><span>Транспорт</span><strong>₴{formatMoney(calculations.installerCostTotals?.transportUah || 0)}</strong></div>
+                  <div><span>Проживання</span><strong>₴{formatMoney(calculations.installerCostTotals?.accommodationUah || 0)}</strong></div>
+                  <div><span>Харчування</span><strong>₴{formatMoney(calculations.installerCostTotals?.foodUah || 0)}</strong></div>
+                  <div><span>Інше</span><strong>₴{formatMoney(calculations.installerCostTotals?.otherUah || 0)}</strong></div>
+                </div>
+
+                <div className="grid grid-cols-3 installer-cost-grid" style={{gap: '1rem'}}>
+                  <div className="input-group">
+                    <label>Назва / місто</label>
+                    <input type="text" value={installerCostState.title || ''} onChange={(e) => updateInstallerCostsField('title', e.target.value)} />
+                  </div>
+                  <div className="input-group">
+                    <label>Днів відрядження</label>
+                    <input type="number" value={installerCostState.days} onChange={(e) => updateInstallerCostsField('days', parseNumberInput(e.target.value))} />
+                  </div>
+                  <div className="input-group">
+                    <label>Монтажників</label>
+                    <input type="number" value={installerCostState.employees} onChange={(e) => updateInstallerCostsField('employees', parseNumberInput(e.target.value))} />
+                  </div>
+                </div>
+
+                <div className="installer-kw-panel">
+                  <div className="installer-kw-title">Розрахунок за 1 кВт</div>
+                  <div className="installer-kw-grid">
+                    <label>
+                      <span>Кількість панелей, шт</span>
+                      <input
+                        type="number"
+                        value={installerCostState.panelCount === "" ? installerPanelCount : installerCostState.panelCount}
+                        onChange={(e) => updateInstallerCostsField('panelCount', parseNumberInput(e.target.value))}
+                      />
+                    </label>
+                    <label>
+                      <span>Потужність панелі, Вт</span>
+                      <input
+                        type="number"
+                        value={installerCostState.panelPower === "" ? installerPanelPower : installerCostState.panelPower}
+                        onChange={(e) => updateInstallerCostsField('panelPower', parseNumberInput(e.target.value))}
+                      />
+                    </label>
+                    <label>
+                      <span>Курс, грн/$</span>
+                      <input type="number" value={rates.usd} onChange={(e) => setRates({...rates, usd: parseNumberInput(e.target.value)})} />
+                    </label>
+                    <div>
+                      <span>Заг. потужність</span>
+                      <strong>{formatKw(installerPowerKw)} кВт</strong>
+                    </div>
+                    <div>
+                      <span>Заг. вартість робіт</span>
+                      <strong>₴{formatMoney(calculations.installerCostTotals?.worksUah || 0)}</strong>
+                    </div>
+                    <div>
+                      <span>Вартість за 1 кВт</span>
+                      <strong>₴{formatMoney(installerWorksCostPerKwUah)} / ${formatMoney(installerWorksCostPerKwUsd)}</strong>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+
+            <div className="installer-sheet-tabs">
+              <button type="button" className={installerCalculatorTab === 'works' ? 'active' : ''} onClick={() => setInstallerCalculatorTab('works')}>Монтажні роботи</button>
+              <button type="button" className={installerCalculatorTab === 'trip' ? 'active' : ''} onClick={() => setInstallerCalculatorTab('trip')}>Відрядження</button>
+            </div>
+
+            <div className="installer-spreadsheet">
+              {installerCalculatorTab === 'works' ? (
+                <table className="installer-sheet-table installer-works-table">
+                  <thead>
+                    <tr>
+                      <th>№</th>
+                      <th className="text-left">Найменування роботи</th>
+                      <th>Од. вим.</th>
+                      <th className="text-right">Ціна, грн</th>
+                      <th className="text-right input-head">Кількість</th>
+                      <th className="text-right formula-head">Вартість, грн</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {installerCostState.workSections.map(section => {
+                      const sectionTotal = (section.items || []).reduce((acc, row) => acc + toNumber(row.priceUah, 0) * toNumber(row.quantity, 0), 0);
+                      const sectionCollapsed = section.collapsed !== false;
+                      return (
+                        <React.Fragment key={section.id}>
+                          <tr className="installer-sheet-section-row">
+                            <td colSpan="6">
+                              <div className="installer-group-heading">
+                                <button
+                                  type="button"
+                                  className="installer-section-toggle"
+                                  onClick={() => toggleInstallerWorkSection(section.id)}
+                                >
+                                  <span aria-hidden="true">{sectionCollapsed ? '▶' : '▼'}</span>
+                                  {section.title}
+                                </button>
+                                <div>
+                                  <strong>₴{formatMoney(sectionTotal)}</strong>
+                                  {!sectionCollapsed && (
+                                    <button type="button" className="secondary" onClick={() => addInstallerWorkRow(section.id)}>+ додаткова робота</button>
+                                  )}
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                          {!sectionCollapsed && section.items.map((row, idx) => (
+                            <tr key={row.id}>
+                              <td className="text-center">{idx + 1}</td>
+                              <td><input type="text" value={row.name} onChange={(e) => updateInstallerWorkRow(section.id, row.id, 'name', e.target.value)} /></td>
+                              <td><input type="text" value={row.unit} onChange={(e) => updateInstallerWorkRow(section.id, row.id, 'unit', e.target.value)} /></td>
+                              <td><input type="number" className="text-right" value={row.priceUah} onChange={(e) => updateInstallerWorkRow(section.id, row.id, 'priceUah', e.target.value)} /></td>
+                              <td className="installer-input-cell"><input type="number" className="text-right" value={row.quantity} onChange={(e) => updateInstallerWorkRow(section.id, row.id, 'quantity', e.target.value)} /></td>
+                              <td className="installer-formula-cell text-right font-bold">₴{formatMoney(toNumber(row.priceUah, 0) * toNumber(row.quantity, 0))}</td>
+                            </tr>
+                          ))}
+                        </React.Fragment>
+                      );
+                    })}
+                    <tr className="installer-sheet-final-row">
+                      <td colSpan="5" className="text-right">ЗАГАЛЬНА ВАРТІСТЬ РОБІТ</td>
+                      <td className="text-right">₴{formatMoney(calculations.installerCostTotals?.worksUah || 0)}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              ) : (
+                <table className="installer-sheet-table installer-trip-table">
+                  <tbody>
+                    <tr className="installer-sheet-title-row">
+                      <td colSpan="6">РОЗРАХУНОК ВИТРАТ НА ВІДРЯДЖЕННЯ</td>
+                      <td>КУРС ОБМІНУ</td>
+                      <td className="installer-input-cell"><input type="number" className="text-right" value={rates.usd} onChange={(e) => setRates({...rates, usd: parseNumberInput(e.target.value)})} /></td>
+                    </tr>
+                    <tr className="installer-sheet-section-row"><td colSpan="8">ЗАГАЛЬНА ІНФОРМАЦІЯ</td></tr>
+                    <tr>
+                      <td colSpan="2">Назва відрядження / місто призначення</td>
+                      <td colSpan="6" className="installer-input-cell"><input type="text" value={installerCostState.title || ''} onChange={(e) => updateInstallerCostsField('title', e.target.value)} /></td>
+                    </tr>
+                    <tr>
+                      <td colSpan="2">Кількість днів відрядження</td>
+                      <td className="installer-input-cell"><input type="number" className="text-right" value={installerCostState.days} onChange={(e) => updateInstallerCostsField('days', parseNumberInput(e.target.value))} /></td>
+                      <td colSpan="5"></td>
+                    </tr>
+                    <tr>
+                      <td colSpan="2">Кількість співробітників</td>
+                      <td className="installer-input-cell"><input type="number" className="text-right" value={installerCostState.employees} onChange={(e) => updateInstallerCostsField('employees', parseNumberInput(e.target.value))} /></td>
+                      <td colSpan="5"></td>
+                    </tr>
+
+                    <tr className="installer-sheet-section-row"><td colSpan="8">ТРАНСПОРТНІ ВИТРАТИ</td></tr>
+                    <tr className="installer-sheet-header-row">
+                      <td>Стаття</td><td>Відстань, км</td><td>Ціна за км</td><td>К-сть поїздок</td><td>Сума, грн</td><td>Сума, $</td><td colSpan="2"></td>
+                    </tr>
+                    {installerCostState.transport.map(row => {
+                      const sumUah = toNumber(row.distanceKm, 0) * toNumber(row.pricePerKmUah, 0) * toNumber(row.trips, 0);
+                      return (
+                        <tr key={row.id}>
+                          <td><input type="text" value={row.name} onChange={(e) => updateInstallerCostRow('transport', row.id, 'name', e.target.value)} /></td>
+                          <td className="installer-input-cell"><input type="number" className="text-right" value={row.distanceKm} onChange={(e) => updateInstallerCostRow('transport', row.id, 'distanceKm', e.target.value)} /></td>
+                          <td className="installer-input-cell"><input type="number" className="text-right" value={row.pricePerKmUah} onChange={(e) => updateInstallerCostRow('transport', row.id, 'pricePerKmUah', e.target.value)} /></td>
+                          <td className="installer-input-cell"><input type="number" className="text-right" value={row.trips} onChange={(e) => updateInstallerCostRow('transport', row.id, 'trips', e.target.value)} /></td>
+                          <td className="installer-formula-cell text-right">₴{formatMoney(sumUah)}</td>
+                          <td className="installer-formula-cell text-right">${formatMoney(sumUah / Math.max(0.000001, toNumber(rates.usd, 1)))}</td>
+                          <td colSpan="2"><button type="button" className="danger" onClick={() => removeInstallerCostRow('transport', row.id)}>✕</button></td>
+                        </tr>
+                      );
+                    })}
+                    <tr className="installer-sheet-total-row"><td colSpan="4" className="text-right">Разом транспорт:</td><td className="text-right">₴{formatMoney(calculations.installerCostTotals?.transportUah || 0)}</td><td className="text-right">${formatMoney((calculations.installerCostTotals?.transportUah || 0) / Math.max(0.000001, toNumber(rates.usd, 1)))}</td><td colSpan="2"><button type="button" className="secondary" onClick={() => addInstallerCostRow('transport')}>+ рядок</button></td></tr>
+
+                    <tr className="installer-sheet-section-row"><td colSpan="8">ПРОЖИВАННЯ</td></tr>
+                    <tr className="installer-sheet-header-row">
+                      <td>Стаття</td><td>Кількість ночей</td><td>Вартість/ніч</td><td>К-сть осіб</td><td>Сума, грн</td><td>Сума, $</td><td colSpan="2"></td>
+                    </tr>
+                    {installerCostState.accommodation.map(row => {
+                      const nights = row.nights === 'auto' ? calculations.installerCostTotals?.autoNights || 0 : toNumber(row.nights, 0);
+                      const people = row.people === 'auto' ? calculations.installerCostTotals?.employees || 0 : toNumber(row.people, 0);
+                      const sumUah = nights * toNumber(row.costPerNightUah, 0) * people;
+                      return (
+                        <tr key={row.id}>
+                          <td><input type="text" value={row.name} onChange={(e) => updateInstallerCostRow('accommodation', row.id, 'name', e.target.value)} /></td>
+                          <td className="installer-formula-cell text-right">{formatMoney(nights)}</td>
+                          <td className="installer-input-cell"><input type="number" className="text-right" value={row.costPerNightUah} onChange={(e) => updateInstallerCostRow('accommodation', row.id, 'costPerNightUah', e.target.value)} /></td>
+                          <td className="installer-formula-cell text-right">{formatMoney(people)}</td>
+                          <td className="installer-formula-cell text-right">₴{formatMoney(sumUah)}</td>
+                          <td className="installer-formula-cell text-right">${formatMoney(sumUah / Math.max(0.000001, toNumber(rates.usd, 1)))}</td>
+                          <td colSpan="2"><button type="button" className="danger" onClick={() => removeInstallerCostRow('accommodation', row.id)}>✕</button></td>
+                        </tr>
+                      );
+                    })}
+                    <tr className="installer-sheet-total-row"><td colSpan="4" className="text-right">Разом проживання:</td><td className="text-right">₴{formatMoney(calculations.installerCostTotals?.accommodationUah || 0)}</td><td className="text-right">${formatMoney((calculations.installerCostTotals?.accommodationUah || 0) / Math.max(0.000001, toNumber(rates.usd, 1)))}</td><td colSpan="2"><button type="button" className="secondary" onClick={() => addInstallerCostRow('accommodation')}>+ рядок</button></td></tr>
+
+                    <tr className="installer-sheet-section-row"><td colSpan="8">ХАРЧУВАННЯ</td></tr>
+                    <tr className="installer-sheet-header-row">
+                      <td>Стаття</td><td>К-сть днів</td><td>Вартість/день</td><td>К-сть осіб</td><td>Сума, грн</td><td>Сума, $</td><td colSpan="2"></td>
+                    </tr>
+                    {installerCostState.food.map(row => {
+                      const days = row.days === 'auto' ? calculations.installerCostTotals?.days || 0 : toNumber(row.days, 0);
+                      const people = row.people === 'auto' ? calculations.installerCostTotals?.employees || 0 : toNumber(row.people, 0);
+                      const sumUah = days * toNumber(row.costPerDayUah, 0) * people;
+                      return (
+                        <tr key={row.id}>
+                          <td><input type="text" value={row.name} onChange={(e) => updateInstallerCostRow('food', row.id, 'name', e.target.value)} /></td>
+                          <td className="installer-formula-cell text-right">{formatMoney(days)}</td>
+                          <td className="installer-input-cell"><input type="number" className="text-right" value={row.costPerDayUah} onChange={(e) => updateInstallerCostRow('food', row.id, 'costPerDayUah', e.target.value)} /></td>
+                          <td className="installer-formula-cell text-right">{formatMoney(people)}</td>
+                          <td className="installer-formula-cell text-right">₴{formatMoney(sumUah)}</td>
+                          <td className="installer-formula-cell text-right">${formatMoney(sumUah / Math.max(0.000001, toNumber(rates.usd, 1)))}</td>
+                          <td colSpan="2"><button type="button" className="danger" onClick={() => removeInstallerCostRow('food', row.id)}>✕</button></td>
+                        </tr>
+                      );
+                    })}
+                    <tr className="installer-sheet-total-row"><td colSpan="4" className="text-right">Разом харчування:</td><td className="text-right">₴{formatMoney(calculations.installerCostTotals?.foodUah || 0)}</td><td className="text-right">${formatMoney((calculations.installerCostTotals?.foodUah || 0) / Math.max(0.000001, toNumber(rates.usd, 1)))}</td><td colSpan="2"><button type="button" className="secondary" onClick={() => addInstallerCostRow('food')}>+ рядок</button></td></tr>
+
+                    <tr className="installer-sheet-section-row"><td colSpan="8">ІНШІ ВИТРАТИ</td></tr>
+                    <tr className="installer-sheet-header-row">
+                      <td colSpan="3">Стаття</td><td>К-сть</td><td>Сума, грн</td><td>Сума, $</td><td colSpan="2"></td>
+                    </tr>
+                    {installerCostState.other.map(row => {
+                      const sumUah = toNumber(row.amountUah, 0) * toNumber(row.quantity, 0);
+                      return (
+                        <tr key={row.id}>
+                          <td colSpan="3"><input type="text" value={row.name} onChange={(e) => updateInstallerCostRow('other', row.id, 'name', e.target.value)} /></td>
+                          <td className="installer-input-cell"><input type="number" className="text-right" value={row.quantity} onChange={(e) => updateInstallerCostRow('other', row.id, 'quantity', e.target.value)} /></td>
+                          <td className="installer-input-cell"><input type="number" className="text-right" value={row.amountUah} onChange={(e) => updateInstallerCostRow('other', row.id, 'amountUah', e.target.value)} /></td>
+                          <td className="installer-formula-cell text-right">${formatMoney(sumUah / Math.max(0.000001, toNumber(rates.usd, 1)))}</td>
+                          <td colSpan="2"><button type="button" className="danger" onClick={() => removeInstallerCostRow('other', row.id)}>✕</button></td>
+                        </tr>
+                      );
+                    })}
+                    <tr className="installer-sheet-total-row"><td colSpan="4" className="text-right">Разом інші:</td><td className="text-right">₴{formatMoney(calculations.installerCostTotals?.otherUah || 0)}</td><td className="text-right">${formatMoney((calculations.installerCostTotals?.otherUah || 0) / Math.max(0.000001, toNumber(rates.usd, 1)))}</td><td colSpan="2"><button type="button" className="secondary" onClick={() => addInstallerCostRow('other')}>+ рядок</button></td></tr>
+                    <tr className="installer-sheet-final-row"><td colSpan="4" className="text-right">ВСЬОГО ДО ВИПЛАТИ</td><td className="text-right">₴{formatMoney(calculations.sums.installerCostsUah || 0)}</td><td className="text-right">${formatMoney(calculations.sums.installerCostsUsd || 0)}</td><td colSpan="2"></td></tr>
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {showQuickCalc && (
         <div className="quick-calc-panel no-print">

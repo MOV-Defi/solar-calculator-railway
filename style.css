@@ -95,6 +95,400 @@ h1, h2, h3 {
   color: var(--text-muted);
 }
 
+.installer-cost-card h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.installer-cost-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.installer-cost-summary > div {
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 0.8rem;
+  background: rgba(15, 23, 42, 0.25);
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.installer-cost-summary span {
+  color: var(--text-muted);
+}
+
+.installer-cost-section {
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 1rem;
+  background: rgba(15, 23, 42, 0.18);
+}
+
+.installer-cost-section table {
+  table-layout: fixed;
+}
+
+.installer-cost-section input {
+  min-width: 0;
+}
+
+.installer-payout-inline {
+  margin-top: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  font-size: 0.95rem;
+  color: var(--text-muted);
+}
+
+.installer-payout-inline strong {
+  color: var(--accent-yellow);
+  font-size: 1.15rem;
+}
+
+.installer-modal-card {
+  width: min(1480px, 96vw) !important;
+  max-width: min(1480px, 96vw) !important;
+  max-height: 96vh;
+  height: 96vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.installer-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 0.55rem;
+}
+
+.installer-modal-header h2 {
+  font-size: 1.35rem;
+  line-height: 1.15;
+}
+
+.installer-modal-header button.secondary {
+  min-height: 40px;
+  padding: 0.45rem 0.85rem;
+}
+
+.installer-modal-summary {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 0.45rem;
+  margin-bottom: 0.55rem;
+}
+
+.installer-modal-summary > div {
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 0.45rem 0.55rem;
+  background: rgba(15, 23, 42, 0.22);
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-height: 44px;
+}
+
+.installer-modal-summary span {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
+.installer-modal-summary strong {
+  color: var(--accent-yellow);
+  font-size: 0.98rem;
+}
+
+.installer-modal-compact-strip {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  min-height: 34px;
+  margin-bottom: 0.45rem;
+  padding: 0.35rem 0.6rem;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: rgba(15, 23, 42, 0.24);
+  color: var(--text-muted);
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.installer-modal-compact-strip span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.installer-modal-compact-strip strong {
+  color: var(--accent-yellow);
+  font-size: 0.88rem;
+}
+
+.installer-modal-body {
+  min-height: 0;
+  overflow: auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(360px, 0.8fr);
+  gap: 1rem;
+  padding-right: 0.25rem;
+}
+
+.installer-modal-panel {
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 1rem;
+  background: rgba(15, 23, 42, 0.18);
+  min-width: 0;
+}
+
+.installer-row-grid {
+  display: grid;
+  grid-template-columns: minmax(160px, 1.2fr) repeat(3, minmax(74px, 0.55fr));
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.installer-row-grid-other {
+  grid-template-columns: minmax(160px, 1.5fr) minmax(90px, 0.7fr) minmax(80px, 0.55fr) 44px;
+}
+
+.installer-modal-card .installer-cost-grid {
+  gap: 0.6rem !important;
+}
+
+.installer-modal-card .installer-cost-grid .input-group {
+  margin-bottom: 0;
+}
+
+.installer-modal-card .installer-cost-grid label {
+  margin-bottom: 0.25rem;
+  font-size: 0.86rem;
+}
+
+.installer-modal-card .installer-cost-grid input {
+  min-height: 34px;
+  padding: 0.35rem 0.5rem;
+}
+
+.installer-sheet-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin: 0.35rem 0 0.5rem;
+}
+
+.installer-sheet-tabs button {
+  min-height: 38px;
+  padding: 0.45rem 0.85rem;
+}
+
+.installer-sheet-tabs button {
+  background: rgba(148, 163, 184, 0.16);
+  color: var(--text-main);
+  border: 1px solid var(--border-color);
+}
+
+.installer-sheet-tabs button.active {
+  background: var(--accent-blue);
+  color: #fff;
+  border-color: var(--accent-blue);
+}
+
+.installer-spreadsheet {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: #eef3f8;
+}
+
+.installer-sheet-table {
+  min-width: 1040px;
+  border-collapse: collapse;
+  color: #172033;
+}
+
+.installer-sheet-table th,
+.installer-sheet-table td {
+  border: 1px solid #d5dde7;
+  padding: 0.45rem 0.5rem;
+  color: #172033;
+  background: #ffffff;
+}
+
+.installer-sheet-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: #233a5f;
+  color: #ffffff;
+  font-weight: 800;
+}
+
+.installer-sheet-table input {
+  background: transparent;
+  color: #111827;
+  border: none;
+  padding: 0.25rem;
+  width: 100%;
+  font-size: 0.9rem;
+}
+
+.installer-sheet-table input:focus {
+  outline: 2px solid #2563eb;
+  box-shadow: none;
+  background: #ffffff;
+}
+
+.installer-works-table th:nth-child(1),
+.installer-works-table td:nth-child(1) {
+  width: 56px;
+}
+
+.installer-works-table th:nth-child(2),
+.installer-works-table td:nth-child(2) {
+  width: 52%;
+}
+
+.installer-works-table th:nth-child(3),
+.installer-works-table td:nth-child(3) {
+  width: 110px;
+}
+
+.installer-works-table th:nth-child(4),
+.installer-works-table td:nth-child(4),
+.installer-works-table th:nth-child(5),
+.installer-works-table td:nth-child(5),
+.installer-works-table th:nth-child(6),
+.installer-works-table td:nth-child(6) {
+  width: 140px;
+}
+
+.installer-input-cell,
+.installer-sheet-table .input-head {
+  background: #fff7df !important;
+}
+
+.installer-formula-cell,
+.installer-sheet-table .formula-head {
+  background: #e8f6ef !important;
+}
+
+.installer-sheet-section-row td {
+  background: #dbe7f4 !important;
+  color: #1f3558 !important;
+  font-weight: 800;
+}
+
+.installer-sheet-header-row td {
+  background: #334a6f !important;
+  color: #ffffff !important;
+  font-weight: 800;
+  text-align: center;
+}
+
+.installer-sheet-total-row td {
+  background: #d9f2e7 !important;
+  color: #14513a !important;
+  font-weight: 800;
+}
+
+.installer-sheet-final-row td {
+  background: #16603f !important;
+  color: #ffffff !important;
+  font-weight: 900;
+}
+
+.installer-sheet-title-row td {
+  background: #233a5f !important;
+  color: #ffffff !important;
+  font-weight: 900;
+}
+
+.installer-sheet-title-row .installer-input-cell {
+  background: #e8eef7 !important;
+  color: #172033 !important;
+}
+
+.installer-sheet-table tr:nth-child(even) td:not(.installer-input-cell):not(.installer-formula-cell) {
+  background: #fbfdff;
+}
+
+.installer-sheet-table tr.installer-sheet-section-row td {
+  background: #dbe7f4 !important;
+}
+
+.installer-sheet-table tr.installer-sheet-total-row td {
+  background: #d9f2e7 !important;
+}
+
+.installer-sheet-table tr.installer-sheet-final-row td {
+  background: #16603f !important;
+  color: #ffffff !important;
+}
+
+.installer-group-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.installer-group-heading > div {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  white-space: nowrap;
+}
+
+.installer-group-heading strong {
+  color: #14513a;
+  font-size: 1rem;
+}
+
+.installer-group-heading button {
+  padding: 0.35rem 0.65rem;
+  font-size: 0.82rem;
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.installer-group-heading .installer-section-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #1f3558;
+  box-shadow: none;
+  font-size: 1rem;
+  font-weight: 900;
+  text-align: left;
+}
+
+.installer-group-heading .installer-section-toggle:hover {
+  color: #0f4aa5;
+  background: transparent;
+}
+
+.installer-group-heading .installer-section-toggle span {
+  width: 1rem;
+  color: #2f6fe4;
+  font-size: 0.8rem;
+}
+
 input[type="number"], input[type="text"], select {
   background-color: #2a2a2a;
   border: 1px solid #333333;
@@ -5759,4 +6153,247 @@ body:has(.design-v2.layout-sidebar) {
 .design-v2.layout-classic .top-shell button[data-title]:hover::after,
 .design-v2.menu-collapsed.layout-classic .top-shell button[data-title]:hover::after {
   transform: translateX(-50%) translateY(0) !important;
+}
+
+@media (max-width: 900px) {
+  .installer-cost-summary,
+  .installer-modal-summary,
+  .installer-cost-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .installer-modal-card {
+    width: 96vw !important;
+    max-height: 94vh;
+  }
+
+  .installer-modal-body {
+    grid-template-columns: 1fr;
+  }
+
+  .installer-row-grid,
+  .installer-row-grid-other {
+    grid-template-columns: 1fr;
+  }
+
+  .installer-cost-section {
+    overflow-x: auto;
+  }
+
+  .installer-cost-section table {
+    min-width: 680px;
+  }
+}
+
+.installer-modal-card .installer-kw-panel {
+  margin: 0.55rem 0 0.5rem;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid #cbd7e6;
+  border-radius: 8px;
+  background: #f7fbff;
+  color: #172033;
+}
+
+.installer-modal-card .installer-kw-title {
+  margin-bottom: 0.45rem;
+  color: #1f3558;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0;
+  font-size: 0.92rem;
+}
+
+.installer-modal-card .installer-kw-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(150px, 1fr));
+  gap: 0.5rem;
+}
+
+.installer-modal-card .installer-kw-grid label,
+.installer-modal-card .installer-kw-grid > div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+  padding: 0.42rem 0.5rem;
+  border: 1px solid #dbe4ef;
+  border-radius: 6px;
+  background: #ffffff;
+}
+
+.installer-modal-card .installer-kw-grid span {
+  color: #607087;
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.installer-modal-card .installer-kw-grid strong {
+  color: #14233b;
+  font-size: 0.92rem;
+  font-weight: 900;
+}
+
+.installer-modal-card .installer-kw-grid input[type="number"] {
+  width: 100%;
+  min-height: 30px;
+  padding: 0.2rem 0.4rem;
+  border: 1px solid #cbd7e6;
+  border-radius: 6px;
+  background: #ffffff !important;
+  color: #172033 !important;
+  box-shadow: none !important;
+  font-weight: 800;
+}
+
+.installer-modal-card .installer-spreadsheet {
+  border: 1px solid #cbd7e6;
+  border-radius: 8px;
+  background: #ffffff;
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
+}
+
+.installer-modal-card > .installer-spreadsheet {
+  flex: 1 1 520px;
+}
+
+.installer-modal-card .installer-sheet-table {
+  width: 100%;
+  table-layout: fixed;
+}
+
+.installer-modal-card .installer-sheet-table th,
+.installer-modal-card .installer-sheet-table td {
+  height: 38px;
+  padding: 0.42rem 0.55rem;
+  line-height: 1.25;
+  vertical-align: middle;
+}
+
+.installer-modal-card .installer-sheet-table input[type="number"],
+.installer-modal-card .installer-sheet-table input[type="text"] {
+  display: block;
+  width: 100%;
+  min-height: 30px;
+  padding: 0.24rem 0.35rem !important;
+  border: 1px solid #d7e0ec !important;
+  border-radius: 4px !important;
+  background: #f8fbff !important;
+  color: #172033 !important;
+  box-shadow: none !important;
+  font-size: 0.92rem !important;
+  font-weight: 700;
+}
+
+.installer-modal-card .installer-sheet-table .installer-input-cell input[type="number"],
+.installer-modal-card .installer-sheet-table .installer-input-cell input[type="text"] {
+  border-color: #dec779 !important;
+  background: #fffdf4 !important;
+  color: #172033 !important;
+}
+
+.installer-modal-card .installer-sheet-table input:focus {
+  outline: 2px solid #2f6fe4 !important;
+  outline-offset: -1px;
+}
+
+.installer-modal-card .installer-sheet-table button.secondary,
+.installer-modal-card .installer-sheet-table button.danger {
+  min-height: 30px;
+  padding: 0.25rem 0.55rem;
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
+.installer-modal-card .installer-works-table th:nth-child(1),
+.installer-modal-card .installer-works-table td:nth-child(1) {
+  width: 48px;
+}
+
+.installer-modal-card .installer-works-table th:nth-child(2),
+.installer-modal-card .installer-works-table td:nth-child(2) {
+  width: 46%;
+}
+
+.installer-modal-card .installer-works-table th:nth-child(3),
+.installer-modal-card .installer-works-table td:nth-child(3) {
+  width: 110px;
+}
+
+.installer-modal-card .installer-works-table th:nth-child(4),
+.installer-modal-card .installer-works-table td:nth-child(4),
+.installer-modal-card .installer-works-table th:nth-child(5),
+.installer-modal-card .installer-works-table td:nth-child(5) {
+  width: 130px;
+}
+
+.installer-modal-card .installer-works-table th:nth-child(6),
+.installer-modal-card .installer-works-table td:nth-child(6) {
+  width: 170px;
+}
+
+.installer-modal-card .installer-trip-table td {
+  min-width: 110px;
+}
+
+.installer-modal-card .installer-sheet-table .input-head {
+  background: #fff3c8 !important;
+  color: #1f2937 !important;
+}
+
+.installer-modal-card .installer-sheet-table .formula-head {
+  background: #dff4eb !important;
+  color: #1f2937 !important;
+}
+
+.installer-modal-card .installer-sheet-table th.input-head,
+.installer-modal-card .installer-sheet-table th.formula-head {
+  font-weight: 900;
+  text-shadow: none;
+}
+
+.installer-modal-card .installer-sheet-table td {
+  padding: 0.5rem 0.65rem;
+}
+
+.installer-modal-card .installer-sheet-table input[type="number"],
+.installer-modal-card .installer-sheet-table input[type="text"] {
+  min-height: 40px;
+  padding: 0.45rem 0.55rem !important;
+  font-size: 1rem !important;
+  line-height: 1.25;
+}
+
+.installer-modal-card .installer-sheet-table .installer-input-cell {
+  padding: 0.45rem 0.7rem !important;
+}
+
+.installer-modal-card .installer-works-table th:nth-child(2),
+.installer-modal-card .installer-works-table td:nth-child(2) {
+  width: 45%;
+}
+
+.installer-modal-card .installer-works-table th:nth-child(4),
+.installer-modal-card .installer-works-table td:nth-child(4),
+.installer-modal-card .installer-works-table th:nth-child(5),
+.installer-modal-card .installer-works-table td:nth-child(5) {
+  width: 150px;
+}
+
+.installer-modal-card .installer-works-table th:nth-child(6),
+.installer-modal-card .installer-works-table td:nth-child(6) {
+  width: 180px;
+}
+
+@media (max-width: 1280px) {
+  .installer-modal-card .installer-kw-grid {
+    grid-template-columns: repeat(3, minmax(150px, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .installer-modal-card .installer-kw-grid {
+    grid-template-columns: 1fr;
+  }
 }
